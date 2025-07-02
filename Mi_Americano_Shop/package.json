@@ -1,0 +1,20 @@
+{
+  "name": "mi-americano-shop",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^5.10.2",
+    "@astrojs/tailwind": "^6.0.2",
+    "@clerk/astro": "^2.10.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.14",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.3"
+  }
+}

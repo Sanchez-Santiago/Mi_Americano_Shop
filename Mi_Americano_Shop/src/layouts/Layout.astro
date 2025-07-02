@@ -1,4 +1,6 @@
 ---
+import Footer from "../components/Footer.astro";
+import Navbar from "../components/Navbar.astro";
 import "../styles/global.css";
 ---
 
@@ -9,5 +11,17 @@ import "../styles/global.css";
     <meta name="viewport" content="width=device-width" />
     <title>Astro Tailwind Test</title>
   </head>
-  <body class="min-h-screen bg-secundario m-0 p-0 w-full h-full"><slot /></body>
+  <body
+    class="min-h-screen flex flex-col bg-radial from-primario via-secundario to-tercero pt-18"
+  >
+    <Navbar />
+
+    <!-- Contenido principal, se expande para empujar el footer abajo -->
+    <main class="flex-1 pt-20">
+      <slot />
+    </main>
+
+    <!-- Footer al final -->
+    <Footer />
+  </body>
 </html>

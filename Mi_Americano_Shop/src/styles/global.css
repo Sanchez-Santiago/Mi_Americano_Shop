@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tus estilos personalizados van después */
+@layer base {
+  h1 {
+    @apply text-3xl font-bold;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply bg-secundario text-white py-2 px-4 rounded;
+  }
+}
+
+
+.nav-shadow {
+    box-shadow: -4px 4px 6px rgba(var(--color-cuarto), 0.4);
+  }

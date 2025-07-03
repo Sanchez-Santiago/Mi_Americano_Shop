@@ -1,5 +1,10 @@
 ---
-
+import {
+  SignedIn,
+  SignedOut,
+  UserButton,
+  SignInButton,
+} from "@clerk/astro/components";
 ---
 
 <div>
@@ -11,7 +16,14 @@
       <div class="flex items-center m-1 gap-4">
         <a href="/" class="text-white hover:text-blue-500">Inicio</a>
         <a href="/" class="text-white hover:text-blue-500">Contacto</a>
-        <a href="/" class="text-white hover:text-blue-500">Soporte</a>
+        <SignedOut>
+          <SignInButton mode="modal" class="text-white hover:text-blue-500"
+            >inisiar sesion</SignInButton
+          >
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
       </div>
     </div>
   </nav>

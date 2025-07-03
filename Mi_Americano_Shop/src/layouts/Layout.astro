@@ -2,6 +2,7 @@
 import Footer from "../components/Footer.astro";
 import Navbar from "../components/Navbar.astro";
 import "../styles/global.css";
+const { title } = Astro.props;
 ---
 
 <!doctype html>
@@ -9,7 +10,7 @@ import "../styles/global.css";
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Astro Tailwind Test</title>
+    <title>{title}</title>
   </head>
   <body
     class="min-h-screen flex flex-col bg-radial from-primario via-secundario to-tercero pt-18"
@@ -24,4 +25,9 @@ import "../styles/global.css";
     <!-- Footer al final -->
     <Footer />
   </body>
+  <style is:global>
+    @import "tailwindcss/base";
+    @import "tailwindcss/components";
+    @import "tailwindcss/utilities";
+  </style>
 </html>

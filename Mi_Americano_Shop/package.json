@@ -8,9 +8,12 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "astro": "^5.10.2",
+    "@astrojs/node": "^9.2.2",
     "@astrojs/tailwind": "^6.0.2",
-    "@clerk/astro": "^2.10.1"
+    "@clerk/astro": "^2.10.1",
+    "@clerk/localizations": "^3.17.2",
+    "@clerk/themes": "^2.2.53",
+    "astro": "^5.10.2"
   },
   "devDependencies": {
     "autoprefixer": "10.4.14",

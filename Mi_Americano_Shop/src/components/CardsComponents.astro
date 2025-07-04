@@ -1,0 +1,30 @@
+---
+// src/components/Cards.astro
+import type { CardInterface } from "../types/Card.ts";
+import Card from "./Card.astro";
+
+const { t } = Astro.props as any;
+
+const cards: CardInterface[] = (
+  t && t.cards ? Object.values(t.cards) : []
+) as CardInterface[];
+---
+
+<div class="flex flex-col items-center justify-center gap-4">
+  <h1 class="">hola</h1>
+  <div
+    class="cards-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
+  >
+    {
+      cards.map((card) => (
+        <Card
+          href={card.href}
+          image={card.image}
+          title={card.title}
+          description={card.description}
+          category={card.category}
+        />
+      ))
+    }
+  </div>
+</div>

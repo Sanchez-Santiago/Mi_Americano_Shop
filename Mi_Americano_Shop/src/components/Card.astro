@@ -1,0 +1,28 @@
+---
+const { href, image, title, description, category } = Astro.props;
+---
+
+<a
+  href={href}
+  class="w-[18rem]
+  h-[19rem]
+  bg-tercero
+  rounded-2xl
+  shadow-[-4px_4px_6px_rgba(12,30,127,1)] backdrop-blur-sm
+  flex flex-col items-center justify-center text-center
+  p-2
+  hover:bg-primario
+  hover:scale-105
+  transition-all duration-300"
+>
+  <img
+    src={image}
+    alt={title}
+    class="w-56 h-52 object-cover mb-4 pt-1 rounded-lg"
+  />
+  <div class="border-t-2 w-[15rem]">
+    <h2 class="text-lg font-semibold">{title}</h2>
+    <p class="text-sm text-gray-200">{description}</p>
+    <p class="text-xs text-gray-400">{category}</p>
+  </div>
+</a>

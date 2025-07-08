@@ -1,28 +1,44 @@
 ---
-const { href, image, title, description, category } = Astro.props;
+const { card, index } = Astro.props;
+const modalId = `modal-toggle-${index}`;
 ---
 
-<a
-  href={href}
-  class="w-[18rem]
-  h-[19rem]
-  bg-tercero
-  rounded-2xl
-  shadow-[-4px_4px_6px_rgba(12,30,127,1)] backdrop-blur-sm
-  flex flex-col items-center justify-center text-center
-  p-2
-  hover:bg-primario
-  hover:scale-105
-  transition-all duration-300"
->
-  <img
-    src={image}
-    alt={title}
-    class="w-56 h-52 object-cover mb-4 pt-1 rounded-lg"
-  />
-  <div class="border-t-2 w-[15rem]">
-    <h2 class="text-lg font-semibold">{title}</h2>
-    <p class="text-sm text-gray-200">{description}</p>
-    <p class="text-xs text-gray-400">{category}</p>
+<div class="relative">
+  <!-- Input oculto (estado del modal) -->
+  <input type="checkbox" id={modalId} class="peer hidden" />
+
+  <!-- Tarjeta que actúa como botón -->
+  <label
+    for={modalId}
+    class="block w-[18rem] h-[19rem] bg-tercero rounded-2xl shadow-md backdrop-blur-sm flex flex-col items-center justify-center text-center p-2 hover:bg-primario hover:scale-105 transition-all duration-300 cursor-pointer"
+  >
+    <img
+      src={card.image}
+      alt={card.title}
+      class="w-56 h-52 object-cover mb-4 pt-1 rounded-lg"
+    />
+    <div class="border-t-2 w-[15rem]">
+      <h2 class="text-lg font-semibold">{card.title}</h2>
+      <p class="text-sm text-gray-200">{card.description}</p>
+      <p class="text-xs text-gray-400">{card.category}</p>
+    </div>
+  </label>
+
+  <!-- Modal -->
+  <div
+    class="fixed inset-0 z-50 bg-black bg-opacity-60 flex items-center justify-center opacity-0 pointer-events-none peer-checked:opacity-100 peer-checked:pointer-events-auto transition-all duration-300"
+  >
+    <div
+      class="bg-tercero text-black p-6 rounded-lg w-[95%] h-[90%] relative shadow-lg"
+    >
+      <!-- Cerrar modal -->
+      <label for={modalId} class="absolute top-2 right-4 text-xl cursor-pointer"
+        >✕</label
+      >
+      <h2 class="text-xl font-bold mb-2">{card.title}</h2>
+      <p class="text-gray-700 whitespace-pre-wrap">
+        {card.details || "Sin detalles."}
+      </p>
+    </div>
   </div>
-</a>
+</div>

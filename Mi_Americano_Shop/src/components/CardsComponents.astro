@@ -15,16 +15,6 @@ const cards: CardInterface[] = (
   <div
     class="cards-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
   >
-    {
-      cards.map((card) => (
-        <Card
-          href={card.href}
-          image={card.image}
-          title={card.title}
-          description={card.description}
-          category={card.category}
-        />
-      ))
-    }
+    {cards.map((card) => <Card card={card} index={cards.indexOf(card)} />)}
   </div>
 </div>

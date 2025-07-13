@@ -4,7 +4,7 @@
     "sqlite": "https://esm.sh/@libsql/client@0.6.0/web",
     "media_types/": "https://deno.land/x/media_types@v3.0.4/",
     "dotenv": "https://deno.land/x/dotenv@v3.2.2/mod.ts",
-    "oak": "https://deno.land/x/oak@v17.1.4/mod.ts",
+    "oak": "https://deno.land/x/oak@v17.1.5/mod.ts",
     "zod": "https://esm.sh/zod@3.22.4",
     "jose": "https://deno.land/x/jose@v6.0.11/index.ts",
     "djwt": "https://deno.land/x/djwt@v2.4/mod.ts",

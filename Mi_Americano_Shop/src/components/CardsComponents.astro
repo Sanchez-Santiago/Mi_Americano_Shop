@@ -1,20 +1,18 @@
 ---
-// src/components/Cards.astro
-import type { CardInterface } from "../types/Card.ts";
 import Card from "./Card.astro";
+import type { CardInterface } from "../types/Card.ts";
 
-const { t } = Astro.props as any;
+interface Props {
+  cards: CardInterface[];
+}
 
-const cards: CardInterface[] = (
-  t && t.cards ? Object.values(t.cards) : []
-) as CardInterface[];
+const { cards } = Astro.props as Props;
 ---
 
-<div class="flex flex-col items-center justify-center gap-4">
-  <h1 class="">hola</h1>
-  <div
-    class="cards-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
-  >
-    {cards.map((card) => <Card card={card} index={cards.indexOf(card)} />)}
+<div class="flex flex-col items-center gap-4">
+  <h1 class="text-2xl font-bold">Productos disponibles</h1>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+    {cards.map((card, i) => <Card card={card} index={i} />)}
   </div>
 </div>

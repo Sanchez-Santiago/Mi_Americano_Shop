@@ -1,7 +1,11 @@
 export interface CardInterface {
-  title: string;
-  description: string;
-  category: string;
+  id: number;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  stock: number;
+  marca: string;
+  talle: string;
   image: string;
-  details: string;
+  details?: string; // opcional: la API puede omitirlo
 }

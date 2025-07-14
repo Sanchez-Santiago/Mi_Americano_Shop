@@ -1,0 +1,186 @@
+---
+// El backend vive fuera del dominio Astro. Cambia la URL si trabajas local.
+const API_URL =
+  import.meta.env.PUBLIC_API_URL ?? "https://miamericano-shop.deno.dev";
+---
+
+<h1 class="text-3xl font-bold text-center mb-8">Dashboard</h1>
+
+<section class="w-full max-w-2xl mx-auto">
+  <form
+    id="productoForm"
+    class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-tercero/60 backdrop-blur-md p-6 rounded-2xl shadow-lg"
+  >
+    <!-- Nombre -->
+    <div class="flex flex-col">
+      <label for="nombre" class="font-semibold mb-1">Nombre</label>
+      <input
+        id="nombre"
+        name="nombre"
+        type="text"
+        required
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Precio -->
+    <div class="flex flex-col">
+      <label for="precio" class="font-semibold mb-1">Precio (ARS)</label>
+      <input
+        id="precio"
+        name="precio"
+        type="number"
+        min="0"
+        step="1"
+        required
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Stock -->
+    <div class="flex flex-col">
+      <label for="stock" class="font-semibold mb-1">Stock</label>
+      <input
+        id="stock"
+        name="stock"
+        type="number"
+        min="0"
+        step="1"
+        required
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Talle -->
+    <div class="flex flex-col">
+      <label for="talle" class="font-semibold mb-1">Talle</label>
+      <input
+        id="talle"
+        name="talle"
+        type="text"
+        pattern="[A-Za-z0-9]{1,5}"
+        required
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Marca -->
+    <div class="flex flex-col">
+      <label for="marca" class="font-semibold mb-1">Marca</label>
+      <input
+        id="marca"
+        name="marca"
+        type="text"
+        required
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Imagen -->
+    <div class="flex flex-col md:col-span-2">
+      <label for="imagen" class="font-semibold mb-1">URL de Imagen</label>
+      <input
+        id="imagen"
+        name="imagen"
+        type="url"
+        class="input-style rounded-lg pl-4"
+      />
+    </div>
+
+    <!-- Descripción -->
+    <div class="flex flex-col md:col-span-2">
+      <label for="descripcion" class="font-semibold mb-1">Descripción</label>
+      <textarea
+        id="descripcion"
+        name="descripcion"
+        rows="4"
+        required
+        class="input-style resize-none rounded-lg pl-4"></textarea>
+    </div>
+
+    <!-- Botón submit -->
+    <div class="md:col-span-2 flex justify-end">
+      <button
+        type="submit"
+        class="flex items-center gap-2 px-8 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-primario via-primario/90 to-primario/80 shadow-md hover:from-primario/90 hover:to-primario/70 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-primario/40"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 4v16m8-8H4"></path></svg
+        >
+        Agregar producto
+      </button>
+    </div>
+  </form>
+
+  <!-- Mensajes -->
+  <p
+    id="msgOk"
+    class="alert alert-success hidden"
+    role="status"
+    aria-live="polite"
+  >
+    ¡Producto agregado!
+  </p>
+  <p
+    id="msgErr"
+    class="alert alert-error hidden"
+    role="alert"
+    aria-live="assertive"
+  >
+  </p>
+</section>
+
+<script is:inline define:vars={{ API_URL }}>
+  // Ahora API_URL está disponible en el script del cliente
+  const API = `${API_URL}/productos`;
+  const form = document.getElementById("productoForm");
+  const okMsg = document.getElementById("msgOk");
+  const errMsg = document.getElementById("msgErr");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const raw = Object.fromEntries(new FormData(form));
+    const data = {
+      ...raw,
+      precio: Number(raw.precio),
+      stock: Number(raw.stock),
+    };
+
+    // Debug: log the data being sent
+    console.log("Enviando datos:", data);
+    console.log("URL del API:", API);
+
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`(${res.status}) ${errorText}`);
+      }
+
+      form.reset();
+      okMsg.classList.remove("hidden");
+      errMsg.classList.add("hidden");
+      setTimeout(() => okMsg.classList.add("hidden"), 4000);
+    } catch (err) {
+      console.error("Error al enviar producto:", err);
+      errMsg.textContent = "Error: " + err.message;
+      errMsg.classList.remove("hidden");
+      okMsg.classList.add("hidden");
+    }
+  });
+</script>

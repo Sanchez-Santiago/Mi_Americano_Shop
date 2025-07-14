@@ -1,0 +1,33 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Cards from "../components/CardsComponents.astro";
+import type { CardInterface } from "../types/Card.ts";
+
+const API_URL =
+  import.meta.env.PUBLIC_API_URL ?? "https://miamericano-shop.deno.dev";
+
+// Llamada al endpoint real: /productos
+const res = await fetch(`${API_URL}/productos`);
+if (!res.ok) throw new Error(`API /productos devolvió ${res.status}`);
+
+const raw = (await res.json()) as any[];
+
+/*  El endpoint trae “imagen” y “descripcion”.
+    Los renombramos a “image” y “descripcion” para que
+    coincidan con CardInterface.  */
+const productos: CardInterface[] = raw.map((p) => ({
+  id: p.id,
+  nombre: p.nombre,
+  descripcion: p.descripcion,
+  precio: p.precio,
+  stock: p.stock,
+  marca: p.marca,
+  talle: p.talle,
+  image: p.imagen, // <-- renombrado
+  details: p.details ?? "",
+}));
+---
+
+<Layout title="Preuvas">
+  <Cards cards={productos} />
+</Layout>

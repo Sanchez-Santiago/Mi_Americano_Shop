@@ -2,8 +2,8 @@
 import type { CardInterface } from "../types/Card.ts";
 
 interface Props {
-  card: CardInterface;
-  index: number;
+    card: CardInterface;
+    index: number;
 }
 
 const { card, index } = Astro.props as Props;
@@ -11,56 +11,61 @@ const modalId = `modal-toggle-${index}`;
 ---
 
 <div class="relative">
-  <!-- Estado del modal -->
-  <input type="checkbox" id={modalId} class="peer hidden" />
+    <!-- Estado del modal -->
+    <input type="checkbox" id={modalId} class="peer hidden" />
 
-  <!-- Tarjeta (botón) -->
-  <label
-    for={modalId}
-    class="w-[18rem] h-[19rem] bg-tercero rounded-2xl shadow-md backdrop-blur-sm
+    <!-- Tarjeta (botón) -->
+    <label
+        for={modalId}
+        class="w-[18rem] h-[19rem] bg-tercero rounded-2xl shadow-md backdrop-blur-sm
            flex flex-col items-center justify-center text-center p-2
            hover:bg-primario hover:scale-105 transition-all duration-300
            cursor-pointer"
-  >
-    <img
-      src={card.image}
-      alt={card.nombre}
-      class="w-56 h-52 object-cover mb-4 pt-1 rounded-lg"
-    />
+    >
+        <img
+            src={card.image}
+            alt={card.nombre}
+            class="w-56 h-52 object-cover mb-4 pt-4 rounded-lg"
+        />
 
-    <div class="border-t-2 w-[15rem]">
-      <h2 class="text-lg font-semibold">{card.nombre}</h2>
-      <p class="text-sm text-gray-200 line-clamp-2">{card.marca}</p>
-      <p class="text-sm text-gray-200 line-clamp-2">{card.descripcion}</p>
-      <p class="text-xs text-gray-400">Talle: {card.talle}</p>
-    </div>
-  </label>
+        <div class="border-t-2 w-[15rem]">
+            <h2 class="text-lg font-semibold">{card.nombre}</h2>
+            <p class="text-sm text-gray-200 line-clamp-2">{card.marca}</p>
+            <p class="text-sm text-gray-200 line-clamp-2">{card.descripcion}</p>
+            <p class="text-xs text-gray-400">Talle: {card.talle}</p>
+        </div>
+    </label>
 
-  <!-- Modal -->
-  <div
-    class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center
+    <!-- Modal -->
+    <div
+        class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center
            opacity-0 pointer-events-none
            peer-checked:opacity-100 peer-checked:pointer-events-auto
            transition-all duration-300"
-  >
-    <div
-      class="bg-tercero text-black p-6 rounded-lg w-[90%] h-[85%] relative shadow-lg"
     >
-      <label for={modalId} class="absolute top-2 right-4 text-xl cursor-pointer"
-        >✕</label
-      >
+        <div
+            class="bg-tercero text-black p-6 rounded-lg w-[90%] h-[85%] relative shadow-lg"
+        >
+            <label
+                for={modalId}
+                class="absolute top-2 right-4 text-xl cursor-pointer">✕</label
+            >
 
-      <h2 class="text-2xl font-bold mb-4">{card.nombre}</h2>
+            <h2 class="text-2xl font-bold mb-4">{card.nombre}</h2>
 
-      <p class="text-gray-700 whitespace-pre-wrap mb-4">
-        {card.details || "Sin detalles adicionales."}
-      </p>
+            <p class="text-gray-700 whitespace-pre-wrap mb-4">
+                {card.details || "Sin detalles adicionales."}
+            </p>
 
-      <ul class="text-gray-700 space-y-1">
-        <li><strong>Precio:</strong> ${card.precio.toLocaleString("es-AR")}</li>
-        <li><strong>Stock:</strong> {card.stock}</li>
-        <li><strong>Talle:</strong> {card.talle}</li>
-      </ul>
+            <ul class="text-gray-700 space-y-1">
+                <li>
+                    <strong>Precio:</strong> ${
+                        card.precio.toLocaleString("es-AR")
+                    }
+                </li>
+                <li><strong>Stock:</strong> {card.stock}</li>
+                <li><strong>Talle:</strong> {card.talle}</li>
+            </ul>
+        </div>
     </div>
-  </div>
 </div>

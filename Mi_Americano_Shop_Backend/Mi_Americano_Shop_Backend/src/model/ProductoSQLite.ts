@@ -1,14 +1,17 @@
 // db/productoModel.ts -----------------------------------------------------
 import { sqlite } from "../db/sqlite.ts";
 import { Producto, ProductoPartial } from "../schemas/producto.ts";
-import { mapRowToProducto } from "../helpers/productoMapper.ts";
+import { ModelDB } from "../interface/model.ts";
 
-export class ProductoSQLite {
-  async createProducto({ input }: { input: ProductoPartial }) {
+export class ProductoSQLite implements ModelDB<Producto> {
+  connection = sqlite;
+
+  async add({ input }: { input: ProductoPartial }): Promise<Producto> {
     try {
       const result = await sqlite.execute({
-        sql: `INSERT INTO producto (nombre, precio, stock, imagen, descripcion, talle, marca)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        sql:
+          `INSERT INTO producto (nombre, precio, stock, imagen, descripcion, talle, marca, user)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           input.nombre ?? "",
           input.precio ?? 0,
@@ -17,77 +20,174 @@ export class ProductoSQLite {
           input.descripcion ?? "",
           input.talle ?? "",
           input.marca ?? "",
+          input.userId ?? "",
         ],
       });
 
-      const id = Number(result.lastInsertRowid);
-      return { id, message: "Producto creado" };
+      return {
+        id: Number(result.lastInsertRowid),
+        nombre: input.nombre ?? "",
+        precio: input.precio ?? 0,
+        stock: input.stock ?? 0,
+        imagen: input.imagen ?? "",
+        descripcion: input.descripcion ?? "",
+        talle: input.talle ?? "",
+        marca: input.marca ?? "",
+        userId: input.userId ?? "",
+      } as Producto;
     } catch (error) {
-      console.error("Error al crear producto:", error); // <--- clave
+      console.error("Error al crear producto:", error);
       throw new Error("No se pudo crear el producto");
     }
   }
 
-  async updateProducto({ id, input }: { id: number; input: Producto }) {
+  async update(
+    { id, input }: { id: string; input: Partial<Producto> },
+  ): Promise<Producto> {
     try {
+      // Primero obtenemos el producto actual para mantener valores existentes
+      const currentProduct = await this.getById({ id });
+      if (!currentProduct) {
+        throw new Error("Producto no encontrado");
+      }
+
       await sqlite.execute({
-        sql: `UPDATE productos 
-              SET nombre = ?, precio = ?, stock = ?, imagen = ?, descripcion = ?, talle = ?, marca = ?
+        sql: `UPDATE producto
+              SET nombre = ?, precio = ?, stock = ?, imagen = ?, descripcion = ?, talle = ?, marca = ?, user = ?
               WHERE id = ?`,
         args: [
-          input.nombre,
-          input.precio,
-          input.stock,
-          input.imagen,
-          input.descripcion,
-          input.talle,
-          input.marca,
-          id,
+          input.nombre ?? currentProduct.nombre,
+          input.precio ?? currentProduct.precio,
+          input.stock ?? currentProduct.stock,
+          input.imagen ?? currentProduct.imagen,
+          input.descripcion ?? currentProduct.descripcion,
+          input.talle ?? currentProduct.talle ?? "XS",
+          input.marca ?? currentProduct.marca,
+          Number(id),
         ],
       });
-      return { message: "Producto actualizado correctamente" };
+
+      return {
+        id: Number(id),
+        nombre: input.nombre ?? currentProduct.nombre,
+        precio: input.precio ?? currentProduct.precio,
+        stock: input.stock ?? currentProduct.stock,
+        imagen: input.imagen ?? currentProduct.imagen,
+        descripcion: input.descripcion ?? currentProduct.descripcion,
+        talle: input.talle ?? currentProduct.talle,
+        marca: input.marca ?? currentProduct.marca,
+        userId: input.userId ?? currentProduct.userId,
+      };
     } catch (error) {
       console.error("Error al actualizar producto:", error);
       throw new Error("No se pudo actualizar el producto");
     }
   }
 
-  async deleteProducto({ id }: { id: number }) {
+  async delete({ id }: { id: string }): Promise<boolean> {
     try {
-      await sqlite.execute({
-        sql: `DELETE FROM productos WHERE id = ?`,
-        args: [id],
+      const result = await sqlite.execute({
+        sql: `DELETE FROM producto WHERE id = ?`,
+        args: [Number(id)],
       });
-      return { message: "Producto eliminado correctamente" };
+
+      // Verificar si se eliminó alguna fila
+      return result.rowsAffected > 0;
     } catch (error) {
       console.error("Error al eliminar producto:", error);
       throw new Error("No se pudo eliminar el producto");
     }
   }
 
-  /** Devuelve un producto o null si no existe */
-  async getProducto({ id }: { id: number }): Promise<Producto | null> {
-    const result = await sqlite.execute({
-      sql: `SELECT * FROM producto WHERE id = ?`,
-      args: [id],
-    });
+  async getById({ id }: { id: string }): Promise<Producto | null> {
+    try {
+      const result = await sqlite.execute({
+        sql: `SELECT * FROM producto WHERE id = ?`,
+        args: [Number(id)],
+      });
 
-    const row = result.rows[0]; // primer (y único) resultado
-    return row ? mapRowToProducto(row) : null;
+      const row = result.rows?.[0];
+      return row
+        ? {
+          id: Number(row.id),
+          nombre: String(row.nombre),
+          precio: Number(row.precio),
+          stock: Number(row.stock),
+          imagen: String(row.imagen),
+          descripcion: String(row.descripcion),
+          talle: (["XS", "S", "M", "L", "XL", "XXL"].includes(String(row.talle))
+            ? String(row.talle)
+            : "XS") as "XS" | "S" | "M" | "L" | "XL" | "XXL",
+          marca: String(row.marca),
+          userId: String(row.userId),
+        }
+        : null;
+    } catch (error) {
+      console.error("Error al obtener producto por ID:", error);
+      throw new Error("No se pudo obtener el producto");
+    }
   }
 
-  /** Devuelve todos los productos */
-  async getProductoAll(): Promise<Producto[]> {
-    const result = await sqlite.execute("SELECT * FROM producto");
-    return result.rows.map(mapRowToProducto);
+  async getAll(
+    { page = 1, limit = 10 }: { page?: number; limit?: number } = {},
+  ): Promise<Producto[] | null> {
+    try {
+      const offset = (page - 1) * limit;
+      const result = await sqlite.execute({
+        sql: `SELECT * FROM producto ORDER BY id DESC LIMIT ? OFFSET ?`,
+        args: [limit, offset],
+      });
+
+      if (!result.rows?.length) return null;
+
+      return result.rows.map((row) => ({
+        id: Number(row.id),
+        nombre: String(row.nombre),
+        precio: Number(row.precio),
+        stock: Number(row.stock),
+        imagen: String(row.imagen),
+        descripcion: String(row.descripcion),
+        talle: (row.talle as "XS" | "S" | "M" | "L" | "XL" | "XXL") ?? "S",
+        marca: String(row.marca),
+        userId: String(row.userId),
+      }));
+    } catch (error) {
+      console.error("Error al obtener todos los productos:", error);
+      throw new Error("No se pudieron obtener los productos");
+    }
   }
 
-  /** Búsqueda (LIKE) por nombre */
-  async getProductoByName({ name }: { name: string }): Promise<Producto[]> {
-    const result = await sqlite.execute({
-      sql: `SELECT * FROM producto WHERE lower(nombre) LIKE lower(?)`,
-      args: [`%${name}%`],
-    });
-    return result.rows.map(mapRowToProducto);
+  async getName({ name, page = 1, limit = 10 }: {
+    name: string;
+    page?: number;
+    limit?: number;
+  }): Promise<Producto[] | null> {
+    try {
+      const offset = (page - 1) * limit;
+      const result = await sqlite.execute({
+        sql: `SELECT * FROM producto
+              WHERE lower(nombre) LIKE lower(?)
+              ORDER BY id DESC
+              LIMIT ? OFFSET ?`,
+        args: [`%${name}%`, limit, offset],
+      });
+
+      if (!result.rows?.length) return null;
+
+      return result.rows.map((row) => ({
+        id: Number(row.id),
+        nombre: String(row.nombre),
+        precio: Number(row.precio),
+        stock: Number(row.stock),
+        imagen: String(row.imagen),
+        descripcion: String(row.descripcion),
+        talle: (row.talle as "XS" | "S" | "M" | "L" | "XL" | "XXL") ?? "S",
+        marca: String(row.marca),
+        user: String(row.user),
+      }));
+    } catch (error) {
+      console.error("Error al buscar productos por nombre:", error);
+      throw new Error("No se pudieron buscar los productos");
+    }
   }
 }

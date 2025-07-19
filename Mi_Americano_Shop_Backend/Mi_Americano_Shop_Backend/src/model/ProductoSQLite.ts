@@ -183,7 +183,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
         descripcion: String(row.descripcion),
         talle: (row.talle as "XS" | "S" | "M" | "L" | "XL" | "XXL") ?? "S",
         marca: String(row.marca),
-        user: String(row.user),
+        userId: String(row.userId),
       }));
     } catch (error) {
       console.error("Error al buscar productos por nombre:", error);

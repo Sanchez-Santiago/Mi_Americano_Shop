@@ -1,5 +1,5 @@
 import { Router } from "oak";
-import { ProductoController } from "../Controller/controler.ts";
+import { ProductoController } from "../Controller/controllerProducto.ts";
 
 const routerProducto = new Router();
 const controller = new ProductoController();
@@ -10,7 +10,7 @@ routerProducto
     ctx.response.body = data;
   })
   .get("/productos/:id", async (ctx) => {
-    const id = Number(ctx.params.id);
+    const id = String(ctx.params.id);
     const data = await controller.getById({ id });
     ctx.response.body = data;
   })
@@ -21,14 +21,14 @@ routerProducto
     ctx.response.body = result;
   })
   .put("/productos/:id", async (ctx) => {
-    const id = Number(ctx.params.id);
+    const id = String(ctx.params.id);
     const body = ctx.request.body.json();
     const value = await body;
     const result = await controller.update({ id, data: value });
     ctx.response.body = result;
   })
   .delete("/productos/:id", async (ctx) => {
-    const id = Number(ctx.params.id);
+    const id = String(ctx.params.id);
     const result = await controller.delete({ id });
     ctx.response.body = result;
   });

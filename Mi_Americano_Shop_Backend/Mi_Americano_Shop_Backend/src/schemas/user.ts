@@ -15,7 +15,7 @@ const UserSchema = z.object({
 
 // Esquemas derivados
 export const UserSecureSchema = UserSchema.omit({ password: true, role: true });
-export const UserCreateSchema = UserSchema.omit({ id: true }).strip();
+export const UserCreateSchema = UserSchema;
 export const UserUpdateSchema = UserSchema.partial().strip();
 export const UserLoginSchema = z.object({
   email: z.string().email(),

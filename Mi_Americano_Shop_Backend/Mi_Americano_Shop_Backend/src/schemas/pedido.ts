@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const pedidoSchema = z.object({
-  idProducto: z.number(),
+  id: z.string().uuid(),
+  idProducto: z.string().uuid(),
   idVendedor: z.string().uuid(),
   idCliente: z.string().uuid(),
   cantidad: z.number().min(1),

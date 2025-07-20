@@ -14,9 +14,10 @@ export class UserSQLite implements ModelDB<UserSecure> {
   async add({ input }: { input: UserCreate }): Promise<UserSecure> {
     try {
       const result = await sqlite.execute({
-        sql: `INSERT INTO user (name, email, password, tel, role)
+        sql: `INSERT INTO user (id,name, email, password, tel, role)
               VALUES (?, ?, ?, ?, ?)`,
         args: [
+          input.id,
           input.name,
           input.email,
           input.password,

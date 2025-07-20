@@ -25,7 +25,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       });
 
       return {
-        id: Number(result.lastInsertRowid),
+        id: String(result.lastInsertRowid),
         nombre: input.nombre ?? "",
         precio: input.precio ?? 0,
         stock: input.stock ?? 0,
@@ -68,7 +68,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       });
 
       return {
-        id: Number(id),
+        id: String(id),
         nombre: input.nombre ?? currentProduct.nombre,
         precio: input.precio ?? currentProduct.precio,
         stock: input.stock ?? currentProduct.stock,
@@ -109,7 +109,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       const row = result.rows?.[0];
       return row
         ? {
-          id: Number(row.id),
+          id: String(row.id),
           nombre: String(row.nombre),
           precio: Number(row.precio),
           stock: Number(row.stock),
@@ -141,7 +141,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       if (!result.rows?.length) return null;
 
       return result.rows.map((row) => ({
-        id: Number(row.id),
+        id: String(row.id),
         nombre: String(row.nombre),
         precio: Number(row.precio),
         stock: Number(row.stock),
@@ -175,7 +175,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       if (!result.rows?.length) return null;
 
       return result.rows.map((row) => ({
-        id: Number(row.id),
+        id: String(row.id),
         nombre: String(row.nombre),
         precio: Number(row.precio),
         stock: Number(row.stock),

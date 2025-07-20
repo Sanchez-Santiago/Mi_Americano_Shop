@@ -32,16 +32,20 @@ export class PedidoSQLite implements ModelDB<Pedido> {
       }
 
       return {
-        id: input.id ?? "",
-        idProducto: input.idProducto ?? "",
-        idCliente: input.idCliente ?? "",
-        idVendedor: input.idVendedor ?? "",
-        cantidad: input.cantidad ?? 0,
-        ubicacion: input.ubicacion ?? "",
-        fechaCreacion: input.fechaCreacion ?? new Date(),
-        fechaEntrega: input.fechaEntrega ?? new Date(),
-        estado: input.estado ?? "pendiente",
-        observaciones: input.observaciones,
+        id: String(input.id),
+        idProducto: String(input.idProducto),
+        idCliente: String(input.idCliente),
+        idVendedor: String(input.idVendedor),
+        cantidad: Number(input.cantidad),
+        ubicacion: String(input.ubicacion),
+        fechaCreacion: new Date(input.fechaCreacion),
+        fechaEntrega: new Date(input.fechaEntrega),
+        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
+            String(input.estado),
+          )
+          ? String(input.estado) as Pedido["estado"]
+          : "pendiente",
+        observaciones: String(input.observaciones),
       };
     } catch (error) {
       console.error("Error al crear pedido:", error);
@@ -111,12 +115,11 @@ export class PedidoSQLite implements ModelDB<Pedido> {
         ubicacion: String(row.ubicacion),
         fechaCreacion: new Date(String(row.fechaCreacion)),
         fechaEntrega: new Date(String(row.fechaEntrega)),
-        estado:
-          ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-              String(row.estado),
-            )
-            ? String(row.estado) as Pedido["estado"]
-            : "pendiente",
+        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
+            String(row.estado),
+          )
+          ? String(row.estado) as Pedido["estado"]
+          : "pendiente",
         observaciones: row.observaciones
           ? String(row.observaciones)
           : undefined,
@@ -162,12 +165,11 @@ export class PedidoSQLite implements ModelDB<Pedido> {
         fechaEntrega: input.fechaEntrega
           ? new Date(String(input.fechaEntrega))
           : currentPedido.fechaEntrega,
-        estado:
-          ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-              String(input.estado),
-            )
-            ? String(input.estado) as Pedido["estado"]
-            : currentPedido.estado,
+        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
+            String(input.estado),
+          )
+          ? String(input.estado) as Pedido["estado"]
+          : currentPedido.estado,
       };
     } catch (error) {
       console.error("Error al actualizar pedido:", error);

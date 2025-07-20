@@ -5,6 +5,10 @@ import {
   productoPartialSchema,
 } from "../schemas/producto.ts";
 
+// Definir talles válidos como constante
+const TALLES_VALIDOS = ["XS", "S", "M", "L", "XL", "XXL"] as const;
+type TalleValido = typeof TALLES_VALIDOS[number];
+
 export class ProductoController {
   private productoSQLite: ProductoSQLite;
 
@@ -17,8 +21,8 @@ export class ProductoController {
    */
   async getAll() {
     try {
-      const productos = await this.productoSQLite.getProductoAll();
-      return productos; // Retorna directamente los datos
+      const productos = await this.productoSQLite.getAll();
+      return productos;
     } catch (error) {
       console.error("Error en getAll:", error);
       throw new Error("Error al obtener los productos");
@@ -28,20 +32,20 @@ export class ProductoController {
   /**
    * Obtener producto por ID
    */
-  async getById({ id }: { id: number }) {
-    // Validar ID
-    if (!id || typeof id !== "number" || id <= 0) {
-      throw new Error("ID inválido. Debe ser un número positivo");
+  async getById({ id }: { id: string }) {
+    // ✅ Corregir validación de ID
+    if (!id || typeof id !== "string" || id.trim() === "") {
+      throw new Error("ID inválido. Debe ser una cadena no vacía");
     }
 
     try {
-      const producto = await this.productoSQLite.getProducto({ id });
+      const producto = await this.productoSQLite.getById({ id });
 
       if (!producto) {
         throw new Error("Producto no encontrado");
       }
 
-      return producto; // Retorna directamente los datos
+      return producto;
     } catch (error) {
       console.error("Error en getById:", error);
       if (error instanceof Error) {
@@ -55,13 +59,12 @@ export class ProductoController {
    * Obtener producto por nombre
    */
   async getByName({ name }: { name: string }) {
-    // Validar nombre
     if (!name || typeof name !== "string" || name.trim() === "") {
       throw new Error("Nombre inválido. Debe ser una cadena no vacía");
     }
 
     try {
-      const producto = await this.productoSQLite.getProductoByName({
+      const producto = await this.productoSQLite.getName({
         name: name.trim(),
       });
 
@@ -69,7 +72,7 @@ export class ProductoController {
         throw new Error("Producto no encontrado");
       }
 
-      return producto; // Retorna directamente los datos
+      return producto;
     } catch (error) {
       console.error("Error en getByName:", error);
       if (error instanceof Error) {
@@ -84,16 +87,11 @@ export class ProductoController {
    */
   async create({ data }: { data: ProductoPartial }) {
     try {
-      // Validar datos de entrada usando el schema
       const validatedData = productoPartialSchema.parse(data);
-
-      // Validaciones adicionales de negocio
       this.validateProductoData(validatedData);
-
-      // Limpiar datos
       const cleanedData = this.cleanProductoData(validatedData);
 
-      const producto = await this.productoSQLite.createProducto({
+      const producto = await this.productoSQLite.add({
         input: cleanedData,
       });
 
@@ -114,31 +112,24 @@ export class ProductoController {
   /**
    * Actualizar producto existente
    */
-  async update({ id, data }: { id: number; data: Partial<Producto> }) {
-    // Validar ID
-    if (!id || typeof id !== "number" || id <= 0) {
-      throw new Error("ID inválido. Debe ser un número positivo");
+  async update({ id, data }: { id: string; data: Partial<Producto> }) {
+    if (!id || typeof id !== "string" || id.length === 0) {
+      throw new Error("ID inválido. Debe ser una cadena no vacía");
     }
 
-    // Validar que se proporcionen datos para actualizar
     if (!data || typeof data !== "object" || Object.keys(data).length === 0) {
       throw new Error("Debe proporcionar al menos un campo para actualizar");
     }
 
     try {
-      // Verificar que el producto existe
-      const productoExistente = await this.productoSQLite.getProducto({ id });
+      const productoExistente = await this.productoSQLite.getById({ id });
       if (!productoExistente) {
         throw new Error("Producto no encontrado");
       }
 
-      // Validar campos individuales si están presentes
       this.validatePartialProductoData(data);
-
-      // Limpiar datos parciales
       const cleanedData = this.cleanPartialProductoData(data);
 
-      // Crear objeto completo para la actualización asegurando que todas las propiedades estén definidas
       const updatedProducto: Producto = {
         id: productoExistente.id,
         nombre: cleanedData.nombre ?? productoExistente.nombre,
@@ -148,9 +139,10 @@ export class ProductoController {
         talle: cleanedData.talle ?? productoExistente.talle,
         marca: cleanedData.marca ?? productoExistente.marca,
         imagen: cleanedData.imagen ?? productoExistente.imagen,
+        userId: cleanedData.userId ?? productoExistente.userId,
       };
 
-      const producto = await this.productoSQLite.updateProducto({
+      const producto = await this.productoSQLite.update({
         id,
         input: updatedProducto,
       });
@@ -172,20 +164,18 @@ export class ProductoController {
   /**
    * Eliminar producto
    */
-  async delete({ id }: { id: number }) {
-    // Validar ID
-    if (!id || typeof id !== "number" || id <= 0) {
-      throw new Error("ID inválido. Debe ser un número positivo");
+  async delete({ id }: { id: string }) {
+    if (!id || typeof id !== "string" || id.trim() === "") {
+      throw new Error("ID inválido. Debe ser una cadena no vacía");
     }
 
     try {
-      // Verificar que el producto existe antes de eliminarlo
-      const productoExistente = await this.productoSQLite.getProducto({ id });
+      const productoExistente = await this.productoSQLite.getById({ id });
       if (!productoExistente) {
         throw new Error("Producto no encontrado");
       }
 
-      const producto = await this.productoSQLite.deleteProducto({ id });
+      const producto = await this.productoSQLite.delete({ id });
 
       return {
         success: true,
@@ -202,10 +192,16 @@ export class ProductoController {
   }
 
   /**
+   * Validar que el talle sea válido
+   */
+  private isValidTalle(talle: string): talle is TalleValido {
+    return TALLES_VALIDOS.includes(talle as TalleValido);
+  }
+
+  /**
    * Validar datos completos del producto
    */
   private validateProductoData(data: ProductoPartial) {
-    // Validar campos requeridos
     if (!data.nombre || data.nombre.trim() === "") {
       throw new Error("El nombre es requerido y no puede estar vacío");
     }
@@ -226,6 +222,11 @@ export class ProductoController {
       throw new Error("El talle es requerido y no puede estar vacío");
     }
 
+    // ✅ Agregar validación de talle válido
+    if (!this.isValidTalle(data.talle.trim())) {
+      throw new Error(`El talle debe ser uno de: ${TALLES_VALIDOS.join(", ")}`);
+    }
+
     if (!data.marca || data.marca.trim() === "") {
       throw new Error("La marca es requerida y no puede estar vacía");
     }
@@ -234,13 +235,11 @@ export class ProductoController {
       throw new Error("La imagen es requerida y no puede estar vacía");
     }
 
-    // Validar formato de URL de imagen (básico)
     const imageUrlRegex = /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|svg))$/i;
     if (!imageUrlRegex.test(data.imagen.trim())) {
       throw new Error("La imagen debe ser una URL válida de imagen");
     }
 
-    // Validar longitud de strings
     if (data.nombre.trim().length > 100) {
       throw new Error("El nombre no puede exceder 100 caracteres");
     }
@@ -273,8 +272,7 @@ export class ProductoController {
 
     if (data.descripcion !== undefined) {
       if (
-        typeof data.descripcion !== "string" ||
-        data.descripcion.trim() === ""
+        typeof data.descripcion !== "string" || data.descripcion.trim() === ""
       ) {
         throw new Error("La descripción debe ser una cadena no vacía");
       }
@@ -299,6 +297,12 @@ export class ProductoController {
       if (typeof data.talle !== "string" || data.talle.trim() === "") {
         throw new Error("El talle debe ser una cadena no vacía");
       }
+      // ✅ Agregar validación de talle válido
+      if (!this.isValidTalle(data.talle.trim())) {
+        throw new Error(
+          `El talle debe ser uno de: ${TALLES_VALIDOS.join(", ")}`,
+        );
+      }
       if (data.talle.trim().length > 10) {
         throw new Error("El talle no puede exceder 10 caracteres");
       }
@@ -322,6 +326,12 @@ export class ProductoController {
         throw new Error("La imagen debe ser una URL válida de imagen");
       }
     }
+
+    if (data.userId !== undefined) {
+      if (typeof data.userId !== "string" || data.userId.trim() === "") {
+        throw new Error("El userId debe ser una cadena no vacía");
+      }
+    }
   }
 
   /**
@@ -332,7 +342,7 @@ export class ProductoController {
       ...data,
       nombre: data.nombre?.trim(),
       descripcion: data.descripcion?.trim(),
-      talle: data.talle?.trim(),
+      talle: data.talle?.trim() as TalleValido | undefined,
       marca: data.marca?.trim(),
       imagen: data.imagen?.trim(),
     };
@@ -346,9 +356,12 @@ export class ProductoController {
 
     if (cleaned.nombre) cleaned.nombre = cleaned.nombre.trim();
     if (cleaned.descripcion) cleaned.descripcion = cleaned.descripcion.trim();
-    if (cleaned.talle) cleaned.talle = cleaned.talle.trim();
+    if (cleaned.talle) {
+      cleaned.talle = cleaned.talle.trim() as typeof cleaned.talle;
+    }
     if (cleaned.marca) cleaned.marca = cleaned.marca.trim();
     if (cleaned.imagen) cleaned.imagen = cleaned.imagen.trim();
+    if (cleaned.userId) cleaned.userId = cleaned.userId.trim();
 
     return cleaned;
   }

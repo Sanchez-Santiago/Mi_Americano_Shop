@@ -1,11 +1,11 @@
 import { sqlite } from "../db/sqlite.ts";
-import { UserCreate, UserSecure, UserUpdate } from "../schemas/user.ts";
+import { User, UserCreate, UserSecure, UserUpdate } from "../schemas/user.ts";
 import { ModelDB } from "../interface/model.ts";
 import { config } from "dotenv";
 
 config({ export: true });
 
-export class UserSQLite implements ModelDB<UserSecure> {
+export class UserSQLite implements ModelDB<User, UserSecure> {
   connection = sqlite;
 
   /**
@@ -111,24 +111,62 @@ export class UserSQLite implements ModelDB<UserSecure> {
   }
 
   /**
-   * Obtiene todos los usuarios paginados
+   * Obtiene una lista paginada de usuarios con filtros opcionales por nombre y correo.
+   *
+   * @param name - (Opcional) Filtro parcial por nombre (ej. "Juan" buscará "%Juan%").
+   * @param email - (Opcional) Filtro parcial por email (ej. "@gmail.com").
+   * @param page - Número de página (por defecto 1).
+   * @param limit - Cantidad de resultados por página (por defecto 10).
+   * @returns Lista de usuarios o null si no hay resultados.
    */
   async getAll({
+    name = "",
+    email = "",
     page = 1,
     limit = 10,
   }: {
+    name?: string;
+    email?: string;
     page?: number;
     limit?: number;
   }): Promise<UserSecure[] | null> {
     try {
       const offset = (page - 1) * limit;
+      const filters: string[] = [];
+      const args: (string | number)[] = [];
+
+      // Armado dinámico de filtros SQL
+      if (name) {
+        filters.push("name LIKE ?");
+        args.push(`%${name}%`);
+      }
+
+      if (email) {
+        filters.push("email LIKE ?");
+        args.push(`%${email}%`);
+      }
+
+      // Construcción del WHERE si hay filtros
+      const whereClause = filters.length > 0
+        ? `WHERE ${filters.join(" AND ")}`
+        : "";
+
+      // Agregamos paginación al final
+      const query = `
+        SELECT id, name, email, tel
+        FROM user
+        ${whereClause}
+        LIMIT ? OFFSET ?
+      `;
+
+      args.push(limit, offset);
 
       const { rows } = await sqlite.execute({
-        sql: `SELECT id, name, email, tel FROM user LIMIT ? OFFSET ?`,
-        args: [limit, offset],
+        sql: query,
+        args,
       });
 
-      if (!rows?.length) return null;
+      if (!rows || rows.length === 0) return null;
 
       return rows.map((row) => ({
         id: String(row.id),
@@ -138,41 +176,7 @@ export class UserSQLite implements ModelDB<UserSecure> {
       }));
     } catch (error) {
       this.handleError("obtener los usuarios", error);
-    }
-  }
-
-  /**
-   * Busca usuarios por nombre
-   */
-  async getName({
-    name,
-    page = 1,
-    limit = 10,
-  }: {
-    name: string;
-    page?: number;
-    limit?: number;
-  }): Promise<UserSecure[] | null> {
-    try {
-      const offset = (page - 1) * limit;
-
-      const { rows } = await sqlite.execute({
-        sql: `SELECT id, name, email, tel FROM user
-              WHERE LOWER(name) LIKE LOWER(?)
-              LIMIT ? OFFSET ?`,
-        args: [`%${name}%`, limit, offset],
-      });
-
-      if (!rows?.length) return null;
-
-      return rows.map((row) => ({
-        id: String(row.id),
-        name: String(row.name),
-        email: String(row.email),
-        tel: String(row.tel),
-      }));
-    } catch (error) {
-      this.handleError("buscar usuarios por nombre", error);
+      return null;
     }
   }
 

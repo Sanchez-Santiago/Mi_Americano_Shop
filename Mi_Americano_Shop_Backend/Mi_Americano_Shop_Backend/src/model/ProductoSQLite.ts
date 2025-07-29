@@ -9,9 +9,9 @@ export class ProductoSQLite implements ModelDB<Producto> {
   async add({ input }: { input: ProductoPartial }): Promise<Producto> {
     try {
       const result = await sqlite.execute({
-        sql:
-          `INSERT INTO producto (nombre, precio, stock, imagen, descripcion, talle, marca, user)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO producto
+          (nombre, precio, stock, imagen, descripcion, talle, marca, userId) VALUES
+          (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           input.nombre ?? "",
           input.precio ?? 0,
@@ -53,17 +53,18 @@ export class ProductoSQLite implements ModelDB<Producto> {
 
       await sqlite.execute({
         sql: `UPDATE producto
-              SET nombre = ?, precio = ?, stock = ?, imagen = ?, descripcion = ?, talle = ?, marca = ?, user = ?
-              WHERE id = ?`,
+          SET nombre = ?, precio = ?, stock = ?,
+          imagen = ?, descripcion = ?, talle = ?, marca = ?, userId = ? WHERE id = ?`,
         args: [
-          input.nombre ?? currentProduct.nombre,
-          input.precio ?? currentProduct.precio,
-          input.stock ?? currentProduct.stock,
-          input.imagen ?? currentProduct.imagen,
-          input.descripcion ?? currentProduct.descripcion,
-          input.talle ?? currentProduct.talle ?? "XS",
-          input.marca ?? currentProduct.marca,
-          Number(id),
+          input.nombre ?? "",
+          input.precio ?? 0,
+          input.stock ?? 0,
+          input.imagen ?? "",
+          input.descripcion ?? "",
+          input.talle ?? "",
+          input.marca ?? "",
+          input.userId ?? "",
+          id,
         ],
       });
 
@@ -129,14 +130,58 @@ export class ProductoSQLite implements ModelDB<Producto> {
   }
 
   async getAll(
-    { page = 1, limit = 10 }: { page?: number; limit?: number } = {},
+    {
+      name,
+      precio,
+      talle,
+      vendedor,
+      page = 1,
+      limit = 10,
+    }: {
+      name?: string;
+      precio?: number;
+      talle?: string;
+      vendedor?: string;
+      page?: number;
+      limit?: number;
+    },
   ): Promise<Producto[] | null> {
     try {
+      const conditions: string[] = [];
+      const args = [];
+
+      if (name) {
+        conditions.push("nombre LIKE ?");
+        args.push(`%${name}%`);
+      }
+      if (precio !== undefined) {
+        conditions.push("precio = ?");
+        args.push(precio);
+      }
+      if (talle) {
+        conditions.push("talle = ?");
+        args.push(talle);
+      }
+      if (vendedor) {
+        conditions.push("userId = ?");
+        args.push(vendedor);
+      }
+
+      const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
       const offset = (page - 1) * limit;
-      const result = await sqlite.execute({
-        sql: `SELECT * FROM producto ORDER BY id DESC LIMIT ? OFFSET ?`,
-        args: [limit, offset],
-      });
+      const sql = `
+        SELECT * FROM producto
+        ${whereClause}
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      args.push(limit, offset);
+
+      const result = await sqlite.execute({ sql, args });
 
       if (!result.rows?.length) return null;
 
@@ -152,24 +197,24 @@ export class ProductoSQLite implements ModelDB<Producto> {
         userId: String(row.userId),
       }));
     } catch (error) {
-      console.error("Error al obtener todos los productos:", error);
+      console.error("Error al obtener productos:", error);
       throw new Error("No se pudieron obtener los productos");
     }
   }
 
-  async getName({ name, page = 1, limit = 10 }: {
+  async getName(params: {
     name: string;
     page?: number;
     limit?: number;
   }): Promise<Producto[] | null> {
     try {
-      const offset = (page - 1) * limit;
+      const offset = (params.page ?? 1) * (params.limit ?? 10) - 1;
       const result = await sqlite.execute({
         sql: `SELECT * FROM producto
               WHERE lower(nombre) LIKE lower(?)
               ORDER BY id DESC
               LIMIT ? OFFSET ?`,
-        args: [`%${name}%`, limit, offset],
+        args: [`%${name}%`, params.limit ?? 10, offset],
       });
 
       if (!result.rows?.length) return null;

@@ -1,4 +1,4 @@
-import { ProductoSQLite } from "../model/ProductoSQLite.ts";
+import { ModelDB } from "../interface/model.ts";
 import {
   Producto,
   ProductoPartial,
@@ -10,18 +10,25 @@ const TALLES_VALIDOS = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 type TalleValido = typeof TALLES_VALIDOS[number];
 
 export class ProductoController {
-  private productoSQLite: ProductoSQLite;
+  private productoSQLite: ModelDB<Producto>;
 
-  constructor() {
-    this.productoSQLite = new ProductoSQLite();
+  constructor(productoModel: ModelDB<Producto>) {
+    this.productoSQLite = productoModel;
   }
 
   /**
    * Obtener todos los productos
    */
-  async getAll() {
+  async getAll(params: {
+    name?: string;
+    precio?: number;
+    talle?: string;
+    vendedor?: string;
+    page?: number;
+    limit?: number;
+  }) {
     try {
-      const productos = await this.productoSQLite.getAll();
+      const productos = await this.productoSQLite.getAll(params);
       return productos;
     } catch (error) {
       console.error("Error en getAll:", error);
@@ -52,33 +59,6 @@ export class ProductoController {
         throw error;
       }
       throw new Error("Error al obtener el producto");
-    }
-  }
-
-  /**
-   * Obtener producto por nombre
-   */
-  async getByName({ name }: { name: string }) {
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      throw new Error("Nombre inválido. Debe ser una cadena no vacía");
-    }
-
-    try {
-      const producto = await this.productoSQLite.getName({
-        name: name.trim(),
-      });
-
-      if (!producto) {
-        throw new Error("Producto no encontrado");
-      }
-
-      return producto;
-    } catch (error) {
-      console.error("Error en getByName:", error);
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Error al obtener el producto por nombre");
     }
   }
 
@@ -222,7 +202,7 @@ export class ProductoController {
       throw new Error("El talle es requerido y no puede estar vacío");
     }
 
-    // ✅ Agregar validación de talle válido
+    // Agregar validación de talle válido
     if (!this.isValidTalle(data.talle.trim())) {
       throw new Error(`El talle debe ser uno de: ${TALLES_VALIDOS.join(", ")}`);
     }

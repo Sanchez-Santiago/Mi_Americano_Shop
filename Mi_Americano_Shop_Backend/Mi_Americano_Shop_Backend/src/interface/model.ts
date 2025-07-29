@@ -1,19 +1,21 @@
-export interface ModelDB<T> {
+export interface ModelDB<T, U = T> {
   connection: unknown;
 
   getAll: (params: {
     page?: number;
     limit?: number;
-  }) => Promise<T[] | null>;
+    name?: string;
+    email?: string;
+  }) => Promise<U[] | null>;
 
-  getById: (params: { id: string }) => Promise<T | null | undefined>;
+  getById: (params: { id: string }) => Promise<U | null>;
 
-  add: (params: { input: any }) => Promise<T>;
+  add: (params: { input: T }) => Promise<U>;
 
   update: (params: {
     id: string;
     input: Partial<T>;
-  }) => Promise<T>;
+  }) => Promise<U>;
 
   delete: (params: { id: string }) => Promise<boolean>;
 }

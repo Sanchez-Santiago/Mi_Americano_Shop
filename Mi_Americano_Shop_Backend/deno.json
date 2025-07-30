@@ -1,6 +1,6 @@
 {
   "importMap": "./import_map.json",
-  "entry": "src/main.ts",
+  "entry": "Mi_Americano_Shop_Backend/src/main.ts",
   "tasks": {
     "start": "deno run -A src/main.ts",
     "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",

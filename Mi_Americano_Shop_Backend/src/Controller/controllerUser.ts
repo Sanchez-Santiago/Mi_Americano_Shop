@@ -1,5 +1,5 @@
 import type { ModelDB } from "../interface/model.ts";
-import { User, UserSecure } from "../schemas/user.ts";
+import { User, UserSecure, UserUpdate } from "../schemas/user.ts";
 
 /**
  * Controlador para gestionar operaciones relacionadas con usuarios.
@@ -76,7 +76,7 @@ export class UserController {
   /**
    * Actualizar un usuario existente por su ID.
    */
-  async update({ id, data }: { id: string; data: Partial<User> }) {
+  async update({ id, data }: { id: string; data: Partial<UserUpdate> }) {
     if (!id || typeof id !== "string" || id.length === 0) {
       throw new Error("ID inválido. Debe ser una cadena no vacía");
     }
@@ -93,11 +93,11 @@ export class UserController {
 
       const updatedUser: User = {
         id: usuarioExistente.id,
-        name: data.name ?? usuarioExistente.name,
-        email: data.email ?? usuarioExistente.email,
-        password: data.password ?? usuarioExistente.password,
-        tel: data.tel ?? usuarioExistente.tel,
-        role: data.role ?? usuarioExistente.role,
+        name: String(data.name),
+        email: String(data.email),
+        password: String(data.password),
+        tel: String(data.tel),
+        role: String(data.role) as "admin" | "cliente" | "vendedor",
       };
 
       const usuarioActualizado = await this.userModel.update({

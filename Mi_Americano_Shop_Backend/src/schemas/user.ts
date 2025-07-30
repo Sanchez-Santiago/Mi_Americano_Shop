@@ -24,7 +24,7 @@ export const UserLoginSchema = z.object({
 export const UserResponseSchema = UserSchema.omit({ password: true });
 
 // Tipos TypeScript
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof UserCreateSchema>;
 export type UserSecure = z.infer<typeof UserSecureSchema>;
 export type UserCreate = z.infer<typeof UserCreateSchema>;
 export type UserUpdate = z.infer<typeof UserUpdateSchema>;

@@ -1,8 +1,8 @@
-
 {
   "importMap": "./import_map.json",
+  "entry": "src/main.ts",
   "tasks": {
-    "start": "deno run --allow-net --watch src/main.ts",
+    "start": "deno run -A src/main.ts",
     "dev": "deno run --allow-net --allow-env --allow-read --watch src/main.ts",
     "test": "deno test --allow-net --allow-env --allow-read --allow-write --unstable --coverage=coverage --parallel --allow-hrtime src/test/test_connection.ts"
   }

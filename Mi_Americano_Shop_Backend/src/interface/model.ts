@@ -6,6 +6,9 @@ export interface ModelDB<T, U = T> {
     limit?: number;
     name?: string;
     email?: string;
+    precio?: number;
+    talle?: string;
+    vendedor?: string;
   }) => Promise<U[] | null>;
 
   getById: (params: { id: string }) => Promise<U | null>;
@@ -14,7 +17,7 @@ export interface ModelDB<T, U = T> {
 
   update: (params: {
     id: string;
-    input: Partial<T>;
+    input: T; // Cambiado de Partial<T> a T para mayor consistencia
   }) => Promise<U>;
 
   delete: (params: { id: string }) => Promise<boolean>;

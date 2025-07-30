@@ -1,8 +1,9 @@
 import { ModelDB } from "../interface/model.ts";
 import {
   Producto,
+  ProductoCreate,
+  productoCreateSchema,
   ProductoPartial,
-  productoPartialSchema,
 } from "../schemas/producto.ts";
 
 // Definir talles válidos como constante
@@ -40,7 +41,6 @@ export class ProductoController {
    * Obtener producto por ID
    */
   async getById({ id }: { id: string }) {
-    // ✅ Corregir validación de ID
     if (!id || typeof id !== "string" || id.trim() === "") {
       throw new Error("ID inválido. Debe ser una cadena no vacía");
     }
@@ -65,14 +65,20 @@ export class ProductoController {
   /**
    * Crear nuevo producto
    */
-  async create({ data }: { data: ProductoPartial }) {
+  async create({ data }: { data: ProductoCreate }) {
     try {
-      const validatedData = productoPartialSchema.parse(data);
-      this.validateProductoData(validatedData);
-      const cleanedData = this.cleanProductoData(validatedData);
+      const validatedData = productoCreateSchema.parse(data);
+      this.validateProductoCreateData(validatedData);
+      const cleanedData = this.cleanProductoCreateData(validatedData);
+
+      // Crear el producto completo con un ID generado
+      const productoCompleto: Producto = {
+        id: crypto.randomUUID(),
+        ...cleanedData,
+      };
 
       const producto = await this.productoSQLite.add({
-        input: cleanedData,
+        input: productoCompleto,
       });
 
       return {
@@ -155,11 +161,11 @@ export class ProductoController {
         throw new Error("Producto no encontrado");
       }
 
-      const producto = await this.productoSQLite.delete({ id });
+      const resultado = await this.productoSQLite.delete({ id });
 
       return {
         success: true,
-        data: producto,
+        data: resultado,
         message: "Producto eliminado exitosamente",
       };
     } catch (error) {
@@ -179,9 +185,9 @@ export class ProductoController {
   }
 
   /**
-   * Validar datos completos del producto
+   * Validar datos para crear producto
    */
-  private validateProductoData(data: ProductoPartial) {
+  private validateProductoCreateData(data: ProductoCreate) {
     if (!data.nombre || data.nombre.trim() === "") {
       throw new Error("El nombre es requerido y no puede estar vacío");
     }
@@ -202,7 +208,6 @@ export class ProductoController {
       throw new Error("El talle es requerido y no puede estar vacío");
     }
 
-    // Agregar validación de talle válido
     if (!this.isValidTalle(data.talle.trim())) {
       throw new Error(`El talle debe ser uno de: ${TALLES_VALIDOS.join(", ")}`);
     }
@@ -220,6 +225,11 @@ export class ProductoController {
       throw new Error("La imagen debe ser una URL válida de imagen");
     }
 
+    if (!data.userId || data.userId.trim() === "") {
+      throw new Error("El userId es requerido y no puede estar vacío");
+    }
+
+    // Validaciones de longitud
     if (data.nombre.trim().length > 100) {
       throw new Error("El nombre no puede exceder 100 caracteres");
     }
@@ -230,10 +240,6 @@ export class ProductoController {
 
     if (data.marca.trim().length > 50) {
       throw new Error("La marca no puede exceder 50 caracteres");
-    }
-
-    if (data.talle.trim().length > 10) {
-      throw new Error("El talle no puede exceder 10 caracteres");
     }
   }
 
@@ -277,14 +283,10 @@ export class ProductoController {
       if (typeof data.talle !== "string" || data.talle.trim() === "") {
         throw new Error("El talle debe ser una cadena no vacía");
       }
-      // ✅ Agregar validación de talle válido
       if (!this.isValidTalle(data.talle.trim())) {
         throw new Error(
           `El talle debe ser uno de: ${TALLES_VALIDOS.join(", ")}`,
         );
-      }
-      if (data.talle.trim().length > 10) {
-        throw new Error("El talle no puede exceder 10 caracteres");
       }
     }
 
@@ -315,16 +317,18 @@ export class ProductoController {
   }
 
   /**
-   * Limpiar datos del producto
+   * Limpiar datos del producto para creación
    */
-  private cleanProductoData(data: ProductoPartial): ProductoPartial {
+  private cleanProductoCreateData(data: ProductoCreate): ProductoCreate {
     return {
-      ...data,
-      nombre: data.nombre?.trim(),
-      descripcion: data.descripcion?.trim(),
-      talle: data.talle?.trim() as TalleValido | undefined,
-      marca: data.marca?.trim(),
-      imagen: data.imagen?.trim(),
+      nombre: data.nombre.trim(),
+      descripcion: data.descripcion.trim(),
+      precio: data.precio,
+      stock: data.stock,
+      talle: data.talle.trim() as TalleValido,
+      marca: data.marca.trim(),
+      imagen: data.imagen.trim(),
+      userId: data.userId.trim(),
     };
   }
 

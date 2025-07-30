@@ -217,7 +217,17 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@1"
+      "jsr:@std/assert@1",
+      "jsr:@std/bytes@1",
+      "jsr:@std/cli@1",
+      "jsr:@std/encoding@1",
+      "jsr:@std/fmt@1",
+      "jsr:@std/html@1",
+      "jsr:@std/http@1",
+      "jsr:@std/media-types@1",
+      "jsr:@std/net@1",
+      "jsr:@std/path@1",
+      "jsr:@std/streams@1"
     ]
   }
 }

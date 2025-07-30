@@ -1,40 +1,44 @@
-// db/productoModel.ts -----------------------------------------------------
+// model/ProductoSQLite.ts
 import { sqlite } from "../db/sqlite.ts";
-import { Producto, ProductoPartial } from "../schemas/producto.ts";
+import { Producto } from "../schemas/producto.ts";
 import { ModelDB } from "../interface/model.ts";
 
 export class ProductoSQLite implements ModelDB<Producto> {
   connection = sqlite;
 
-  async add({ input }: { input: ProductoPartial }): Promise<Producto> {
+  async add({ input }: { input: Producto }): Promise<Producto> {
     try {
       const result = await sqlite.execute({
         sql: `INSERT INTO producto
-          (nombre, precio, stock, imagen, descripcion, talle, marca, userId) VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, nombre, precio, stock, imagen, descripcion, talle, marca, userId) VALUES
+          (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
-          input.nombre ?? "",
-          input.precio ?? 0,
-          input.stock ?? 0,
-          input.imagen ?? "",
-          input.descripcion ?? "",
-          input.talle ?? "",
-          input.marca ?? "",
-          input.userId ?? "",
+          input.id,
+          input.nombre,
+          input.precio,
+          input.stock,
+          input.imagen,
+          input.descripcion,
+          input.talle,
+          input.marca,
+          input.userId,
         ],
       });
+      if (!result) {
+        throw new Error("No se pudo crear el producto");
+      }
 
       return {
-        id: String(result.lastInsertRowid),
-        nombre: input.nombre ?? "",
-        precio: input.precio ?? 0,
-        stock: input.stock ?? 0,
-        imagen: input.imagen ?? "",
-        descripcion: input.descripcion ?? "",
-        talle: input.talle ?? "",
-        marca: input.marca ?? "",
-        userId: input.userId ?? "",
-      } as Producto;
+        id: input.id,
+        nombre: input.nombre,
+        precio: input.precio,
+        stock: input.stock,
+        imagen: input.imagen,
+        descripcion: input.descripcion,
+        talle: input.talle,
+        marca: input.marca,
+        userId: input.userId,
+      };
     } catch (error) {
       console.error("Error al crear producto:", error);
       throw new Error("No se pudo crear el producto");
@@ -42,42 +46,36 @@ export class ProductoSQLite implements ModelDB<Producto> {
   }
 
   async update(
-    { id, input }: { id: string; input: Partial<Producto> },
+    { id, input }: { id: string; input: Producto },
   ): Promise<Producto> {
     try {
-      // Primero obtenemos el producto actual para mantener valores existentes
-      const currentProduct = await this.getById({ id });
-      if (!currentProduct) {
-        throw new Error("Producto no encontrado");
-      }
-
       await sqlite.execute({
         sql: `UPDATE producto
           SET nombre = ?, precio = ?, stock = ?,
           imagen = ?, descripcion = ?, talle = ?, marca = ?, userId = ? WHERE id = ?`,
         args: [
-          input.nombre ?? "",
-          input.precio ?? 0,
-          input.stock ?? 0,
-          input.imagen ?? "",
-          input.descripcion ?? "",
-          input.talle ?? "",
-          input.marca ?? "",
-          input.userId ?? "",
+          input.nombre,
+          input.precio,
+          input.stock,
+          input.imagen,
+          input.descripcion,
+          input.talle,
+          input.marca,
+          input.userId,
           id,
         ],
       });
 
       return {
-        id: String(id),
-        nombre: input.nombre ?? currentProduct.nombre,
-        precio: input.precio ?? currentProduct.precio,
-        stock: input.stock ?? currentProduct.stock,
-        imagen: input.imagen ?? currentProduct.imagen,
-        descripcion: input.descripcion ?? currentProduct.descripcion,
-        talle: input.talle ?? currentProduct.talle,
-        marca: input.marca ?? currentProduct.marca,
-        userId: input.userId ?? currentProduct.userId,
+        id: id,
+        nombre: input.nombre,
+        precio: input.precio,
+        stock: input.stock,
+        imagen: input.imagen,
+        descripcion: input.descripcion,
+        talle: input.talle,
+        marca: input.marca,
+        userId: input.userId,
       };
     } catch (error) {
       console.error("Error al actualizar producto:", error);
@@ -89,10 +87,9 @@ export class ProductoSQLite implements ModelDB<Producto> {
     try {
       const result = await sqlite.execute({
         sql: `DELETE FROM producto WHERE id = ?`,
-        args: [Number(id)],
+        args: [id],
       });
 
-      // Verificar si se eliminó alguna fila
       return result.rowsAffected > 0;
     } catch (error) {
       console.error("Error al eliminar producto:", error);
@@ -104,7 +101,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
     try {
       const result = await sqlite.execute({
         sql: `SELECT * FROM producto WHERE id = ?`,
-        args: [Number(id)],
+        args: [id],
       });
 
       const row = result.rows?.[0];
@@ -118,7 +115,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
           descripcion: String(row.descripcion),
           talle: (["XS", "S", "M", "L", "XL", "XXL"].includes(String(row.talle))
             ? String(row.talle)
-            : "XS") as "XS" | "S" | "M" | "L" | "XL" | "XXL",
+            : "S") as "XS" | "S" | "M" | "L" | "XL" | "XXL",
           marca: String(row.marca),
           userId: String(row.userId),
         }
@@ -199,40 +196,6 @@ export class ProductoSQLite implements ModelDB<Producto> {
     } catch (error) {
       console.error("Error al obtener productos:", error);
       throw new Error("No se pudieron obtener los productos");
-    }
-  }
-
-  async getName(params: {
-    name: string;
-    page?: number;
-    limit?: number;
-  }): Promise<Producto[] | null> {
-    try {
-      const offset = (params.page ?? 1) * (params.limit ?? 10) - 1;
-      const result = await sqlite.execute({
-        sql: `SELECT * FROM producto
-              WHERE lower(nombre) LIKE lower(?)
-              ORDER BY id DESC
-              LIMIT ? OFFSET ?`,
-        args: [`%${name}%`, params.limit ?? 10, offset],
-      });
-
-      if (!result.rows?.length) return null;
-
-      return result.rows.map((row) => ({
-        id: String(row.id),
-        nombre: String(row.nombre),
-        precio: Number(row.precio),
-        stock: Number(row.stock),
-        imagen: String(row.imagen),
-        descripcion: String(row.descripcion),
-        talle: (row.talle as "XS" | "S" | "M" | "L" | "XL" | "XXL") ?? "S",
-        marca: String(row.marca),
-        userId: String(row.userId),
-      }));
-    } catch (error) {
-      console.error("Error al buscar productos por nombre:", error);
-      throw new Error("No se pudieron buscar los productos");
     }
   }
 }

@@ -3,7 +3,6 @@ import {
   Producto,
   ProductoCreate,
   productoCreateSchema,
-  ProductoPartial,
 } from "../schemas/producto.ts";
 
 // Definir talles válidos como constante

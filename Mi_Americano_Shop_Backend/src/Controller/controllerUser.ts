@@ -1,5 +1,10 @@
 import type { ModelDB } from "../interface/model.ts";
-import { User, UserSecure, UserUpdate } from "../schemas/user.ts";
+import {
+  User,
+  UserCreateSchema,
+  UserSecure,
+  UserUpdate,
+} from "../schemas/user.ts";
 
 /**
  * Controlador para gestionar operaciones relacionadas con usuarios.
@@ -91,13 +96,23 @@ export class UserController {
         throw new Error("Usuario no encontrado");
       }
 
+      // Validar y convertir el role de manera segura
+      const validateRole = (role: string): "admin" | "cliente" | "vendedor" => {
+        if (role === "admin" || role === "cliente" || role === "vendedor") {
+          return role;
+        }
+        throw new Error(
+          `Rol inválido: ${role}. Debe ser uno de: admin, cliente, vendedor`,
+        );
+      };
+
       const updatedUser: User = {
         id: usuarioExistente.id,
-        name: String(data.name),
-        email: String(data.email),
-        password: String(data.password),
-        tel: String(data.tel),
-        role: String(data.role) as "admin" | "cliente" | "vendedor",
+        name: data.name ? String(data.name) : usuarioExistente.name,
+        email: data.email ? String(data.email) : usuarioExistente.email,
+        password: data.password ? String(data.password) : "unchanged", // Mantener contraseña existente
+        tel: data.tel ? String(data.tel) : usuarioExistente.tel,
+        role: data.role ? validateRole(String(data.role)) : "cliente", // Valor por defecto
       };
 
       const usuarioActualizado = await this.userModel.update({

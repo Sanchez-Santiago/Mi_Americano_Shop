@@ -14,15 +14,14 @@ export class PedidoSQLite implements ModelDB<Pedido> {
         sql: `
           INSERT INTO pedido (
             id, idCliente, idProducto, cantidad,
-            fechaCreacion, fechaEntrega, estado
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            fechaCreacion, estado
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
         args: [
           input.id ?? "",
           input.idCliente ?? "",
           input.idProducto ?? "",
           input.cantidad ?? 0,
           input.fechaCreacion ?? new Date().toISOString(),
-          input.fechaEntrega ?? new Date().toISOString(),
           input.estado ?? "pendiente",
         ],
       });
@@ -39,7 +38,6 @@ export class PedidoSQLite implements ModelDB<Pedido> {
         cantidad: Number(input.cantidad),
         ubicacion: String(input.ubicacion),
         fechaCreacion: new Date(input.fechaCreacion),
-        fechaEntrega: new Date(input.fechaEntrega),
         estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
             String(input.estado),
           )
@@ -56,7 +54,7 @@ export class PedidoSQLite implements ModelDB<Pedido> {
   /**
    * Obtiene un pedido por su ID.
    */
-  async getById({ id }: { id: string }): Promise<Pedido | null> {
+  async getById({ id }: { id: string }): Promise<Pedido | undefined> {
     try {
       const result = await sqlite.execute({
         sql: `SELECT * FROM pedido WHERE id = ?`,
@@ -64,27 +62,42 @@ export class PedidoSQLite implements ModelDB<Pedido> {
       });
 
       const row = result.rows?.[0];
-      return row
-        ? {
-          id: String(row.id),
-          idProducto: String(row.idProducto),
-          idCliente: String(row.idCliente),
-          idVendedor: String(row.idVendedor),
-          cantidad: Number(row.cantidad),
-          ubicacion: String(row.ubicacion),
-          fechaCreacion: new Date(String(row.fechaCreacion)),
-          fechaEntrega: new Date(String(row.fechaEntrega)),
-          estado:
-            ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-                String(row.estado),
-              )
-              ? String(row.estado) as Pedido["estado"]
-              : "pendiente",
-          observaciones: row.observaciones
-            ? String(row.observaciones)
-            : undefined,
-        }
-        : null;
+
+      // Verifica que row existe y tiene los campos requeridos
+      if (!row) {
+        return undefined;
+      }
+
+      // Asegúrate de que los campos requeridos no sean undefined
+      if (
+        !row.id || !row.idProducto || !row.idVendedor || !row.idCliente ||
+        row.cantidad == null || !row.estado || !row.ubicacion ||
+        !row.fechaCreacion
+      ) {
+        console.error("Datos incompletos en la base de datos:", row);
+        return undefined;
+      }
+
+      return {
+        id: String(row.id),
+        idProducto: String(row.idProducto),
+        idCliente: String(row.idCliente),
+        idVendedor: String(row.idVendedor),
+        cantidad: Number(row.cantidad),
+        ubicacion: String(row.ubicacion),
+        fechaCreacion: new Date(String(row.fechaCreacion)),
+        fechaEntrega: row.fechaEntrega
+          ? new Date(String(row.fechaEntrega))
+          : undefined,
+        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
+            String(row.estado),
+          )
+          ? String(row.estado) as Pedido["estado"]
+          : "pendiente",
+        observaciones: row.observaciones
+          ? String(row.observaciones)
+          : undefined,
+      };
     } catch (error) {
       console.error("Error al obtener pedido por ID:", error);
       throw new Error("No se pudo obtener el pedido");
@@ -135,7 +148,7 @@ export class PedidoSQLite implements ModelDB<Pedido> {
    */
   async update(
     { id, input }: { id: string; input: PedidoPartial },
-  ): Promise<Pedido> {
+  ): Promise<Pedido | undefined> {
     try {
       const currentPedido = await this.getById({ id });
       if (!currentPedido) {
@@ -151,9 +164,7 @@ export class PedidoSQLite implements ModelDB<Pedido> {
           String(input.ubicacion ?? currentPedido.ubicacion),
           Number(input.cantidad ?? currentPedido.cantidad),
           String(input.estado ?? currentPedido.estado),
-          String(
-            input.fechaEntrega ?? currentPedido.fechaEntrega.toISOString(),
-          ),
+          String(input.fechaEntrega ?? currentPedido.fechaEntrega),
           String(id),
         ],
       });

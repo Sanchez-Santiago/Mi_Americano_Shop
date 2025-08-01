@@ -9,11 +9,13 @@ const pedidoSchema = z.object({
   estado: z.enum(["pendiente", "en_proceso", "entregado", "cancelado"]),
   ubicacion: z.string().min(5).max(100),
   fechaCreacion: z.date(),
-  fechaEntrega: z.date(),
+  fechaEntrega: z.date().optional(),
   observaciones: z.string().optional(),
 });
 
 export const pedidoPartial = pedidoSchema.partial();
+export const pedidoCreate = pedidoSchema.omit({ fechaEntrega: true });
 
 export type Pedido = z.infer<typeof pedidoSchema>;
 export type PedidoPartial = z.infer<typeof pedidoPartial>;
+export type PedidoCreate = z.infer<typeof pedidoCreate>;

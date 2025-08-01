@@ -87,7 +87,7 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
   /**
    * Obtiene un usuario por ID
    */
-  async getById({ id }: { id: string }): Promise<UserSecure | null> {
+  async getById({ id }: { id: string }): Promise<UserSecure | undefined> {
     try {
       const { rows } = await sqlite.execute({
         sql: `SELECT id, name, email, tel FROM user WHERE id = ?`,
@@ -104,7 +104,7 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
         };
       }
 
-      return null;
+      return undefined;
     } catch (error) {
       this.handleError("obtener el usuario", error);
     }

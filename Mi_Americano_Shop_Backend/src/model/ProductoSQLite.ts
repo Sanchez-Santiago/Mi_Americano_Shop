@@ -1,6 +1,6 @@
 // model/ProductoSQLite.ts
 import { sqlite } from "../db/sqlite.ts";
-import { Producto } from "../schemas/producto.ts";
+import { Producto, ProductoPartial } from "../schemas/producto.ts";
 import { ModelDB } from "../interface/model.ts";
 
 export class ProductoSQLite implements ModelDB<Producto> {
@@ -46,36 +46,39 @@ export class ProductoSQLite implements ModelDB<Producto> {
   }
 
   async update(
-    { id, input }: { id: string; input: Producto },
+    { id, input }: { id: string; input: ProductoPartial },
   ): Promise<Producto> {
     try {
+      const productoOld = await this.getById({ id });
+      if (!productoOld) throw new Error("Producto no encontrado");
+
       await sqlite.execute({
         sql: `UPDATE producto
           SET nombre = ?, precio = ?, stock = ?,
           imagen = ?, descripcion = ?, talle = ?, marca = ?, userId = ? WHERE id = ?`,
         args: [
-          input.nombre,
-          input.precio,
-          input.stock,
-          input.imagen,
-          input.descripcion,
-          input.talle,
-          input.marca,
-          input.userId,
+          input.nombre ?? productoOld.nombre,
+          input.precio ?? productoOld.precio,
+          input.stock ?? productoOld.stock,
+          input.imagen ?? productoOld.imagen,
+          input.descripcion ?? productoOld.descripcion,
+          input.talle ?? productoOld.talle,
+          input.marca ?? productoOld.marca,
+          input.userId ?? productoOld.userId,
           id,
         ],
       });
 
       return {
         id: id,
-        nombre: input.nombre,
-        precio: input.precio,
-        stock: input.stock,
-        imagen: input.imagen,
-        descripcion: input.descripcion,
-        talle: input.talle,
-        marca: input.marca,
-        userId: input.userId,
+        nombre: input.nombre ?? productoOld.nombre,
+        precio: input.precio ?? productoOld.precio,
+        stock: input.stock ?? productoOld.stock,
+        imagen: input.imagen ?? productoOld.imagen,
+        descripcion: input.descripcion ?? productoOld.descripcion,
+        talle: input.talle ?? productoOld.talle,
+        marca: input.marca ?? productoOld.marca,
+        userId: input.userId ?? productoOld.userId,
       };
     } catch (error) {
       console.error("Error al actualizar producto:", error);
@@ -97,7 +100,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
     }
   }
 
-  async getById({ id }: { id: string }): Promise<Producto | null> {
+  async getById({ id }: { id: string }): Promise<Producto | undefined> {
     try {
       const result = await sqlite.execute({
         sql: `SELECT * FROM producto WHERE id = ?`,
@@ -119,7 +122,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
           marca: String(row.marca),
           userId: String(row.userId),
         }
-        : null;
+        : undefined;
     } catch (error) {
       console.error("Error al obtener producto por ID:", error);
       throw new Error("No se pudo obtener el producto");

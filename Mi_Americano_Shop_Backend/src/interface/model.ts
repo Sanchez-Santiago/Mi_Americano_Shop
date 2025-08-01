@@ -11,14 +11,14 @@ export interface ModelDB<T, U = T> {
     vendedor?: string;
   }) => Promise<U[] | null>;
 
-  getById: (params: { id: string }) => Promise<U | null>;
+  getById: (params: { id: string }) => Promise<U | undefined>;
 
   add: (params: { input: T }) => Promise<U>;
 
   update: (params: {
     id: string;
     input: T; // Cambiado de Partial<T> a T para mayor consistencia
-  }) => Promise<U>;
+  }) => Promise<U | undefined>;
 
   delete: (params: { id: string }) => Promise<boolean>;
 }

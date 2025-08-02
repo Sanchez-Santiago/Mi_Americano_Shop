@@ -1,49 +1,75 @@
 import { ModelDB } from "../interface/model.ts";
-import { Pedido, PedidoPartial } from "../schemas/pedido.ts";
+import { Pedido } from "../schemas/pedido.ts";
 import { sqlite } from "../db/sqlite.ts";
 
-export class PedidoSQLite implements ModelDB<Pedido> {
+type Role = "admin" | "vendedor" | string;
+
+interface AuthContext {
+  userId: string;
+  role: Role;
+}
+
+interface SQLiteRow {
+  id: string | number;
+  idProducto: string | number;
+  idCliente: string | number;
+  idVendedor: string | number;
+  cantidad: string | number;
+  ubicacion: string;
+  fechaCreacion: string;
+  fechaEntrega?: string | null;
+  estado: string;
+  observaciones?: string | null;
+}
+
+function mapRowToPedido(row: SQLiteRow): Pedido {
+  return {
+    id: String(row.id),
+    idProducto: String(row.idProducto),
+    idCliente: String(row.idCliente),
+    idVendedor: String(row.idVendedor),
+    cantidad: Number(row.cantidad),
+    ubicacion: String(row.ubicacion),
+    fechaCreacion: new Date(String(row.fechaCreacion)),
+    fechaEntrega: row.fechaEntrega
+      ? new Date(String(row.fechaEntrega))
+      : undefined,
+    estado: String(row.estado) as Pedido["estado"],
+    observaciones: row.observaciones ? String(row.observaciones) : undefined,
+  };
+}
+
+export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
   connection = sqlite;
 
-  /**
-   * Agrega un nuevo pedido a la base de datos.
-   */
-  async add({ input }: { input: Pedido }): Promise<Pedido> {
+  async add(
+    { input }: { input: Pedido },
+  ): Promise<Pedido> {
     try {
-      const result = await sqlite.execute({
+      await sqlite.execute({
         sql: `
           INSERT INTO pedido (
-            id, idCliente, idProducto, cantidad,
-            fechaCreacion, estado
-          ) VALUES (?, ?, ?, ?, ?, ?)`,
+            id, idProducto, idVendedor, idCliente, cantidad, ubicacion, fechaCreacion, estado, observaciones
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
-          input.id ?? "",
-          input.idCliente ?? "",
-          input.idProducto ?? "",
-          input.cantidad ?? 0,
-          input.fechaCreacion ?? new Date().toISOString(),
-          input.estado ?? "pendiente",
+          input.id,
+          input.idProducto,
+          input.idVendedor,
+          input.idCliente,
+          input.cantidad,
+          input.ubicacion,
+          input.fechaCreacion.toISOString(),
+          input.estado,
+          input.observaciones ?? "",
         ],
       });
 
-      if (!result) {
-        throw new Error("No se pudo crear el pedido");
-      }
-
       return {
-        id: String(input.id),
-        idProducto: String(input.idProducto),
-        idCliente: String(input.idCliente),
-        idVendedor: String(input.idVendedor),
-        cantidad: Number(input.cantidad),
-        ubicacion: String(input.ubicacion),
-        fechaCreacion: new Date(input.fechaCreacion),
-        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-            String(input.estado),
-          )
-          ? String(input.estado) as Pedido["estado"]
-          : "pendiente",
-        observaciones: String(input.observaciones),
+        ...input,
+        fechaCreacion: new Date(String(input.fechaCreacion)),
+        fechaEntrega: input.fechaEntrega
+          ? new Date(String(input.fechaEntrega))
+          : undefined,
       };
     } catch (error) {
       console.error("Error al crear pedido:", error);
@@ -51,152 +77,187 @@ export class PedidoSQLite implements ModelDB<Pedido> {
     }
   }
 
-  /**
-   * Obtiene un pedido por su ID.
-   */
-  async getById({ id }: { id: string }): Promise<Pedido | undefined> {
+  async getById({
+    id,
+    context,
+  }: { id: string; context: AuthContext }): Promise<Pedido | undefined> {
     try {
-      const result = await sqlite.execute({
-        sql: `SELECT * FROM pedido WHERE id = ?`,
-        args: [Number(id)],
-      });
+      const baseSql = `SELECT * FROM pedido WHERE id = ?`;
+      let sql: string;
+      let args: (string | number)[];
 
-      const row = result.rows?.[0];
-
-      // Verifica que row existe y tiene los campos requeridos
-      if (!row) {
-        return undefined;
+      if (context.role === "admin") {
+        sql = baseSql;
+        args = [id];
+      } else {
+        sql = `${baseSql} AND idVendedor = ?`;
+        args = [id, context.userId];
       }
 
-      // Asegúrate de que los campos requeridos no sean undefined
-      if (
-        !row.id || !row.idProducto || !row.idVendedor || !row.idCliente ||
-        row.cantidad == null || !row.estado || !row.ubicacion ||
-        !row.fechaCreacion
-      ) {
-        console.error("Datos incompletos en la base de datos:", row);
-        return undefined;
-      }
-
-      return {
-        id: String(row.id),
-        idProducto: String(row.idProducto),
-        idCliente: String(row.idCliente),
-        idVendedor: String(row.idVendedor),
-        cantidad: Number(row.cantidad),
-        ubicacion: String(row.ubicacion),
-        fechaCreacion: new Date(String(row.fechaCreacion)),
-        fechaEntrega: row.fechaEntrega
-          ? new Date(String(row.fechaEntrega))
-          : undefined,
-        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-            String(row.estado),
-          )
-          ? String(row.estado) as Pedido["estado"]
-          : "pendiente",
-        observaciones: row.observaciones
-          ? String(row.observaciones)
-          : undefined,
-      };
+      const result = await sqlite.execute({ sql, args });
+      const row = result.rows?.[0] as unknown as SQLiteRow | undefined;
+      if (!row) return undefined;
+      return mapRowToPedido(row);
     } catch (error) {
       console.error("Error al obtener pedido por ID:", error);
       throw new Error("No se pudo obtener el pedido");
     }
   }
 
-  /**
-   * Obtiene todos los pedidos, con paginación opcional.
-   */
-  async getAll(
-    { page = 1, limit = 10 }: { page?: number; limit?: number } = {},
-  ): Promise<Pedido[] | null> {
+  async getAll({
+    context,
+    page = 1,
+    limit = 20,
+    name,
+    email,
+    precio,
+    talle,
+    vendedorId,
+  }: {
+    context: AuthContext;
+    page?: number;
+    limit?: number;
+    name?: string;
+    email?: string;
+    precio?: number;
+    talle?: string;
+    vendedorId?: string;
+  }): Promise<Pedido[] | null> {
     try {
-      const offset = (page - 1) * limit;
-      const result = await sqlite.execute({
-        sql: `SELECT * FROM pedido ORDER BY id DESC LIMIT ? OFFSET ?`,
-        args: [limit, offset],
-      });
+      const offset = Math.max(0, page - 1) * limit;
 
+      const ownerId = context.role === "admin" && vendedorId
+        ? vendedorId
+        : context.userId;
+
+      const filters: string[] = [];
+      const args: (string | number)[] = [];
+
+      filters.push("idVendedor = ?");
+      args.push(ownerId);
+
+      if (name) {
+        filters.push("name LIKE ?");
+        args.push(`%${name}%`);
+      }
+      if (email) {
+        filters.push("email = ?");
+        args.push(email);
+      }
+      if (typeof precio !== "undefined") {
+        filters.push("precio = ?");
+        args.push(precio);
+      }
+      if (talle) {
+        filters.push("talle = ?");
+        args.push(talle);
+      }
+
+      const whereClause = filters.length
+        ? `WHERE ${filters.join(" AND ")}`
+        : "";
+      const sql = `
+        SELECT * FROM pedido
+        ${whereClause}
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+      `;
+      args.push(limit, offset);
+
+      const result = await sqlite.execute({ sql, args });
       if (!result.rows?.length) return null;
-
-      return result.rows.map((row) => ({
-        id: String(row.id),
-        idProducto: String(row.idProducto),
-        idCliente: String(row.idCliente),
-        idVendedor: String(row.idVendedor),
-        cantidad: Number(row.cantidad),
-        ubicacion: String(row.ubicacion),
-        fechaCreacion: new Date(String(row.fechaCreacion)),
-        fechaEntrega: new Date(String(row.fechaEntrega)),
-        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-            String(row.estado),
-          )
-          ? String(row.estado) as Pedido["estado"]
-          : "pendiente",
-        observaciones: row.observaciones
-          ? String(row.observaciones)
-          : undefined,
-      }));
+      return result.rows.map((row) =>
+        mapRowToPedido(row as unknown as SQLiteRow)
+      );
     } catch (error) {
       console.error("Error al obtener todos los pedidos:", error);
       throw new Error("No se pudieron obtener los pedidos");
     }
   }
 
-  /**
-   * Actualiza un pedido existente por su ID.
-   */
-  async update(
-    { id, input }: { id: string; input: PedidoPartial },
-  ): Promise<Pedido | undefined> {
+  async update({
+    id,
+    context,
+    input,
+  }: {
+    id: string;
+    context: AuthContext;
+    input: Partial<Pedido>;
+  }): Promise<Pedido | undefined> {
     try {
-      const currentPedido = await this.getById({ id });
-      if (!currentPedido) {
-        throw new Error("Pedido no encontrado");
+      const existing = await this.getById({ id, context });
+      if (!existing) {
+        throw new Error("Pedido no encontrado o sin permisos");
+      }
+
+      const updated: Pedido = {
+        ...existing,
+        ...input,
+        fechaCreacion: existing.fechaCreacion,
+        fechaEntrega: input.fechaEntrega
+          ? new Date(String(input.fechaEntrega))
+          : existing.fechaEntrega,
+        estado: input.estado
+          ? String(input.estado) as Pedido["estado"]
+          : existing.estado,
+        observaciones: typeof input.observaciones !== "undefined"
+          ? String(input.observaciones)
+          : existing.observaciones,
+      };
+
+      const args: (string | number | null)[] = [
+        updated.observaciones ?? "",
+        updated.ubicacion,
+        updated.cantidad,
+        updated.estado,
+        updated.fechaEntrega ? updated.fechaEntrega.toISOString() : null,
+        id,
+      ];
+
+      if (context.role !== "admin") {
+        args.push(context.userId);
       }
 
       await sqlite.execute({
         sql: `UPDATE pedido
               SET observaciones = ?, ubicacion = ?, cantidad = ?, estado = ?, fechaEntrega = ?
-              WHERE id = ?`,
-        args: [
-          String(input.observaciones ?? currentPedido.observaciones),
-          String(input.ubicacion ?? currentPedido.ubicacion),
-          Number(input.cantidad ?? currentPedido.cantidad),
-          String(input.estado ?? currentPedido.estado),
-          String(input.fechaEntrega ?? currentPedido.fechaEntrega),
-          String(id),
-        ],
+              WHERE id = ? ${
+          context.role === "admin" ? "" : "AND idVendedor = ?"
+        }`,
+        args,
       });
 
-      return {
-        ...currentPedido,
-        ...input,
-        fechaCreacion: currentPedido.fechaCreacion, // No se actualiza
-        fechaEntrega: input.fechaEntrega
-          ? new Date(String(input.fechaEntrega))
-          : currentPedido.fechaEntrega,
-        estado: ["pendiente", "en_proceso", "entregado", "cancelado"].includes(
-            String(input.estado),
-          )
-          ? String(input.estado) as Pedido["estado"]
-          : currentPedido.estado,
-      };
+      return updated;
     } catch (error) {
       console.error("Error al actualizar pedido:", error);
       throw new Error("No se pudo actualizar el pedido");
     }
   }
 
-  /**
-   * Elimina un pedido por su ID.
-   */
-  async delete({ id }: { id: string }): Promise<boolean> {
+  async delete({
+    id,
+    context,
+  }: {
+    id: string;
+    context: AuthContext;
+  }): Promise<boolean> {
     try {
-      const result = await sqlite.execute({
-        sql: `DELETE FROM pedido WHERE id = ?`,
-        args: [Number(id)],
-      });
+      if (context.role !== "admin") {
+        const existing = await this.getById({ id, context });
+        if (!existing) {
+          throw new Error("Pedido no encontrado o sin permisos para eliminar");
+        }
+      }
+
+      const sql = context.role === "admin"
+        ? `DELETE FROM pedido WHERE id = ?`
+        : `DELETE FROM pedido WHERE id = ? AND idVendedor = ?`;
+
+      const args: (string | number)[] = context.role === "admin"
+        ? [id]
+        : [id, context.userId];
+
+      const result = await sqlite.execute({ sql, args });
 
       return result.rowsAffected > 0;
     } catch (error) {

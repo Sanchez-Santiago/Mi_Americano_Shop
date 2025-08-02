@@ -13,9 +13,15 @@ const pedidoSchema = z.object({
   observaciones: z.string().optional(),
 });
 
-export const pedidoPartial = pedidoSchema.partial();
-export const pedidoCreate = pedidoSchema.omit({ fechaEntrega: true });
+const pedidoPartial = pedidoSchema.partial();
+const pedidoCreate = pedidoSchema.omit({ fechaEntrega: true });
+const pedidoUpdate = pedidoSchema.omit({
+  idCliente: true,
+  idVendedor: true,
+  idProducto: true,
+}).partial();
 
 export type Pedido = z.infer<typeof pedidoSchema>;
 export type PedidoPartial = z.infer<typeof pedidoPartial>;
 export type PedidoCreate = z.infer<typeof pedidoCreate>;
+export type PedidoUpdate = z.infer<typeof pedidoUpdate>;

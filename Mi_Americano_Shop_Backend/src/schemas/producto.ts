@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Esquema base para producto completo
 export const productoSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   nombre: z.string().min(2).max(100),
   descripcion: z.string().max(500),
   precio: z.number().min(0),

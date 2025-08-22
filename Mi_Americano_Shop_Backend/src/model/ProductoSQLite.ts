@@ -25,7 +25,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
         ],
       });
       if (!result) {
-        throw new Error("No se pudo crear el producto");
+        throw new Error("No se pudo crear el producto, error DB");
       }
 
       return {
@@ -145,7 +145,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
       page?: number;
       limit?: number;
     },
-  ): Promise<Producto[] | null> {
+  ): Promise<Producto[] | undefined> {
     try {
       const conditions: string[] = [];
       const args = [];
@@ -183,7 +183,7 @@ export class ProductoSQLite implements ModelDB<Producto> {
 
       const result = await sqlite.execute({ sql, args });
 
-      if (!result.rows?.length) return null;
+      if (!result.rows?.length) return undefined;
 
       return result.rows.map((row) => ({
         id: String(row.id),

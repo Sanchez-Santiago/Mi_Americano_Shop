@@ -2,13 +2,6 @@ import { ModelDB } from "../interface/model.ts";
 import { Pedido } from "../schemas/pedido.ts";
 import { sqlite } from "../db/sqlite.ts";
 
-type Role = "admin" | "vendedor" | string;
-
-interface AuthContext {
-  userId: string;
-  role: Role;
-}
-
 interface SQLiteRow {
   id: string | number;
   idProducto: string | number;
@@ -22,6 +15,9 @@ interface SQLiteRow {
   observaciones?: string | null;
 }
 
+/**
+ * Convierte una fila cruda de SQLite en un objeto Pedido tipado.
+ */
 function mapRowToPedido(row: SQLiteRow): Pedido {
   return {
     id: String(row.id),
@@ -29,22 +25,21 @@ function mapRowToPedido(row: SQLiteRow): Pedido {
     idCliente: String(row.idCliente),
     idVendedor: String(row.idVendedor),
     cantidad: Number(row.cantidad),
-    ubicacion: String(row.ubicacion),
-    fechaCreacion: new Date(String(row.fechaCreacion)),
-    fechaEntrega: row.fechaEntrega
-      ? new Date(String(row.fechaEntrega))
-      : undefined,
-    estado: String(row.estado) as Pedido["estado"],
-    observaciones: row.observaciones ? String(row.observaciones) : undefined,
+    ubicacion: row.ubicacion,
+    fechaCreacion: new Date(row.fechaCreacion),
+    fechaEntrega: row.fechaEntrega ? new Date(row.fechaEntrega) : undefined,
+    estado: row.estado as Pedido["estado"],
+    observaciones: row.observaciones ?? undefined,
   };
 }
 
 export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
   connection = sqlite;
 
-  async add(
-    { input }: { input: Pedido },
-  ): Promise<Pedido> {
+  /**
+   * Inserta un nuevo pedido en la base de datos.
+   */
+  async add({ input }: { input: Pedido }): Promise<Pedido> {
     try {
       await sqlite.execute({
         sql: `
@@ -63,49 +58,36 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
           input.observaciones ?? "",
         ],
       });
-
-      return {
-        ...input,
-        fechaCreacion: new Date(String(input.fechaCreacion)),
-        fechaEntrega: input.fechaEntrega
-          ? new Date(String(input.fechaEntrega))
-          : undefined,
-      };
+      return mapRowToPedido(input as unknown as SQLiteRow);
     } catch (error) {
       console.error("Error al crear pedido:", error);
       throw new Error("No se pudo crear el pedido");
     }
   }
 
-  async getById({
-    id,
-    context,
-  }: { id: string; context: AuthContext }): Promise<Pedido | undefined> {
+  /**
+   * Obtiene un pedido por su ID.
+   */
+  async getById({ id }: { id: string }): Promise<Pedido | undefined> {
     try {
-      const baseSql = `SELECT * FROM pedido WHERE id = ?`;
-      let sql: string;
-      let args: (string | number)[];
-
-      if (context.role === "admin") {
-        sql = baseSql;
-        args = [id];
-      } else {
-        sql = `${baseSql} AND idVendedor = ?`;
-        args = [id, context.userId];
-      }
-
+      const sql = `SELECT * FROM pedido WHERE id = ?`;
+      const args = [id];
       const result = await sqlite.execute({ sql, args });
+
       const row = result.rows?.[0] as unknown as SQLiteRow | undefined;
-      if (!row) return undefined;
-      return mapRowToPedido(row);
+      return row ? mapRowToPedido(row) : undefined;
     } catch (error) {
       console.error("Error al obtener pedido por ID:", error);
       throw new Error("No se pudo obtener el pedido");
     }
   }
 
+  /**
+   * Lista pedidos con paginación y filtros opcionales.
+   * ⚠️ Este método devuelve datos sin filtrar por permisos.
+   * El filtrado por rol/contexto se hace en el Service.
+   */
   async getAll({
-    context,
     page = 1,
     limit = 20,
     name,
@@ -114,7 +96,6 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
     talle,
     vendedorId,
   }: {
-    context: AuthContext;
     page?: number;
     limit?: number;
     name?: string;
@@ -122,20 +103,16 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
     precio?: number;
     talle?: string;
     vendedorId?: string;
-  }): Promise<Pedido[] | null> {
+  }): Promise<Pedido[] | undefined> {
     try {
       const offset = Math.max(0, page - 1) * limit;
-
-      const ownerId = context.role === "admin" && vendedorId
-        ? vendedorId
-        : context.userId;
-
       const filters: string[] = [];
       const args: (string | number)[] = [];
 
-      filters.push("idVendedor = ?");
-      args.push(ownerId);
-
+      if (vendedorId) {
+        filters.push("idVendedor = ?");
+        args.push(vendedorId);
+      }
       if (name) {
         filters.push("name LIKE ?");
         args.push(`%${name}%`);
@@ -157,17 +134,18 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
         ? `WHERE ${filters.join(" AND ")}`
         : "";
       const sql = `
-        SELECT * FROM pedido
-        ${whereClause}
-        ORDER BY id DESC
-        LIMIT ? OFFSET ?
-      `;
+         SELECT * FROM pedido
+         ${whereClause}
+         ORDER BY id DESC
+         LIMIT ? OFFSET ?
+       `;
       args.push(limit, offset);
 
       const result = await sqlite.execute({ sql, args });
-      if (!result.rows?.length) return null;
-      return result.rows.map((row) =>
-        mapRowToPedido(row as unknown as SQLiteRow)
+      if (!result.rows?.length) return undefined; // ✅ ya no null
+
+      return result.rows.map(
+        (row) => mapRowToPedido(row as unknown as SQLiteRow), // ✅ cast correcto
       );
     } catch (error) {
       console.error("Error al obtener todos los pedidos:", error);
@@ -175,56 +153,40 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
     }
   }
 
+  /**
+   * Actualiza un pedido existente.
+   */
   async update({
     id,
-    context,
     input,
   }: {
     id: string;
-    context: AuthContext;
     input: Partial<Pedido>;
   }): Promise<Pedido | undefined> {
     try {
-      const existing = await this.getById({ id, context });
-      if (!existing) {
-        throw new Error("Pedido no encontrado o sin permisos");
-      }
+      const existing = await this.getById({ id });
+      if (!existing) throw new Error("Pedido no encontrado");
 
       const updated: Pedido = {
         ...existing,
         ...input,
-        fechaCreacion: existing.fechaCreacion,
         fechaEntrega: input.fechaEntrega
           ? new Date(String(input.fechaEntrega))
           : existing.fechaEntrega,
-        estado: input.estado
-          ? String(input.estado) as Pedido["estado"]
-          : existing.estado,
-        observaciones: typeof input.observaciones !== "undefined"
-          ? String(input.observaciones)
-          : existing.observaciones,
       };
-
-      const args: (string | number | null)[] = [
-        updated.observaciones ?? "",
-        updated.ubicacion,
-        updated.cantidad,
-        updated.estado,
-        updated.fechaEntrega ? updated.fechaEntrega.toISOString() : null,
-        id,
-      ];
-
-      if (context.role !== "admin") {
-        args.push(context.userId);
-      }
 
       await sqlite.execute({
         sql: `UPDATE pedido
               SET observaciones = ?, ubicacion = ?, cantidad = ?, estado = ?, fechaEntrega = ?
-              WHERE id = ? ${
-          context.role === "admin" ? "" : "AND idVendedor = ?"
-        }`,
-        args,
+              WHERE id = ?`,
+        args: [
+          updated.observaciones ?? "",
+          updated.ubicacion,
+          updated.cantidad,
+          updated.estado,
+          updated.fechaEntrega ? updated.fechaEntrega.toISOString() : null,
+          id,
+        ],
       });
 
       return updated;
@@ -234,29 +196,13 @@ export class PedidoSQLite implements ModelDB<Pedido, Pedido> {
     }
   }
 
-  async delete({
-    id,
-    context,
-  }: {
-    id: string;
-    context: AuthContext;
-  }): Promise<boolean> {
+  /**
+   * Elimina un pedido de la base de datos.
+   */
+  async delete({ id }: { id: string }): Promise<boolean> {
     try {
-      if (context.role !== "admin") {
-        const existing = await this.getById({ id, context });
-        if (!existing) {
-          throw new Error("Pedido no encontrado o sin permisos para eliminar");
-        }
-      }
-
-      const sql = context.role === "admin"
-        ? `DELETE FROM pedido WHERE id = ?`
-        : `DELETE FROM pedido WHERE id = ? AND idVendedor = ?`;
-
-      const args: (string | number)[] = context.role === "admin"
-        ? [id]
-        : [id, context.userId];
-
+      const sql = `DELETE FROM pedido WHERE id = ?`;
+      const args = [id];
       const result = await sqlite.execute({ sql, args });
 
       return result.rowsAffected > 0;

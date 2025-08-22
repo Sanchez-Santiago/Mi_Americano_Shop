@@ -4,6 +4,7 @@ import { config } from "dotenv";
 import routerHome from "./router/HomeRouter.ts";
 import { routerProducto } from "./router/ProductoRouter.ts";
 import { routerUser } from "./router/UserRouter.ts";
+import { authRouter } from "./router/AuthRouter.ts";
 import { corsMiddleware, timingMiddleware } from "./middleware/index.ts";
 import { ProductoSQLite } from "./model/ProductoSQLite.ts";
 import { UserSQLite } from "./model/UserSQLite.ts";
@@ -34,6 +35,11 @@ const userRouter = routerUser(userInstance);
 
 app.use(userRouter.routes());
 app.use(userRouter.allowedMethods());
+
+const authRoutes = authRouter(userInstance);
+
+app.use(authRoutes.routes());
+app.use(authRoutes.allowedMethods());
 
 console.log(`Servidor corriendo en http://localhost:${PORT}`);
 await app.listen({ port: PORT });

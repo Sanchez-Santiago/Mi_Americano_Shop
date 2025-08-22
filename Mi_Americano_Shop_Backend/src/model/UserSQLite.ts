@@ -1,17 +1,18 @@
 import { sqlite } from "../db/sqlite.ts";
-import { User, UserCreate, UserSecure, UserUpdate } from "../schemas/user.ts";
-import { ModelDB } from "../interface/model.ts";
+import { User, UserUpdate } from "../schemas/user.ts";
+import { UserModelDB } from "../interface/UserModel.ts";
 import { config } from "dotenv";
+import type { Role } from "../types/AuthContext.ts";
 
 config({ export: true });
 
-export class UserSQLite implements ModelDB<User, UserSecure> {
+export class UserSQLite implements UserModelDB {
   connection = sqlite;
 
   /**
    * Agrega un nuevo usuario
    */
-  async add({ input }: { input: UserCreate }): Promise<UserSecure> {
+  async add({ input }: { input: User }): Promise<User> {
     try {
       const result = await sqlite.execute({
         sql: `INSERT INTO user (id,name, email, password, tel, role)
@@ -30,12 +31,14 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
 
       return {
         id,
-        name: input.name,
-        email: input.email,
-        tel: input.tel,
+        name: String(input.name),
+        email: String(input.email),
+        password: String(input.password),
+        tel: String(input.tel),
+        role: String(input.role) as Role,
       };
     } catch (error) {
-      this.handleError("crear el usuario", error);
+      this.handleError("crear el usuario DB", error);
     }
   }
 
@@ -48,21 +51,25 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
   }: {
     id: string;
     input: Partial<UserUpdate>;
-  }): Promise<UserSecure> {
+  }): Promise<User> {
     try {
+      const user = await this.getById({ id });
+      if (!user) throw new Error("Usuario no encontrado");
+
       await sqlite.execute({
         sql: `UPDATE user
-              SET email = ?, name = ?, tel = ?
+              SET email = ?, name = ?, tel = ?, password = ?
               WHERE id = ?`,
         args: [
-          input.email ?? "",
-          input.name ?? "",
-          input.tel ?? "",
+          input.email ?? user.email,
+          input.name ?? user.name,
+          input.tel ?? user.tel,
+          input.password ?? user.password,
           id,
         ],
       });
 
-      return await this.getById({ id }) as UserSecure;
+      return await this.getById({ id }) as User;
     } catch (error) {
       this.handleError("actualizar el usuario", error);
     }
@@ -87,7 +94,7 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
   /**
    * Obtiene un usuario por ID
    */
-  async getById({ id }: { id: string }): Promise<UserSecure | undefined> {
+  async getById({ id }: { id: string }): Promise<User | undefined> {
     try {
       const { rows } = await sqlite.execute({
         sql: `SELECT id, name, email, tel FROM user WHERE id = ?`,
@@ -98,15 +105,42 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
         const [row] = rows;
         return {
           id: String(row.id),
+          password: String(row.password),
           name: String(row.name),
           email: String(row.email),
+          role: String(row.role) as Role,
           tel: String(row.tel),
         };
       }
 
       return undefined;
     } catch (error) {
-      this.handleError("obtener el usuario", error);
+      this.handleError("obtener el usuario DB", error);
+    }
+  }
+
+  async getByEmail({ email }: { email: string }): Promise<User | undefined> {
+    try {
+      const { rows } = await sqlite.execute({
+        sql: `SELECT id, name, email, tel FROM user WHERE email = ?`,
+        args: [email],
+      });
+
+      if (rows?.length) {
+        const [row] = rows;
+        return {
+          id: String(row.id),
+          password: String(row.password),
+          name: String(row.name),
+          email: String(row.email),
+          role: String(row.role) as Role,
+          tel: String(row.tel),
+        };
+      }
+
+      return undefined;
+    } catch (error) {
+      this.handleError("obtener el usuario DB", error);
     }
   }
 
@@ -129,7 +163,7 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
     email?: string;
     page?: number;
     limit?: number;
-  }): Promise<UserSecure[] | null> {
+  }): Promise<User[] | undefined> {
     try {
       const offset = (page - 1) * limit;
       const filters: string[] = [];
@@ -166,17 +200,19 @@ export class UserSQLite implements ModelDB<User, UserSecure> {
         args,
       });
 
-      if (!rows || rows.length === 0) return null;
+      if (!rows || rows.length === 0) return undefined;
 
       return rows.map((row) => ({
         id: String(row.id),
         name: String(row.name),
         email: String(row.email),
+        password: String(row.password),
         tel: String(row.tel),
+        role: String(row.role) as Role,
       }));
     } catch (error) {
-      this.handleError("obtener los usuarios", error);
-      return null;
+      this.handleError("obtener los usuarios DB", error);
+      return undefined;
     }
   }
 

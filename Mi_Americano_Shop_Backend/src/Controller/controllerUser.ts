@@ -1,19 +1,24 @@
 import type { ModelDB } from "../interface/model.ts";
+import { UserService } from "../services/serviceUser.ts";
 import {
   User,
   UserCreateSchema,
   UserSecure,
   UserUpdate,
 } from "../schemas/user.ts";
+import { config } from "dotenv";
+import { AuthContext } from "../types/AuthContext.ts";
 
+config({ export: true });
 /**
  * Controlador para gestionar operaciones relacionadas con usuarios.
  */
 export class UserController {
-  private userModel: ModelDB<User, UserSecure>;
-
-  constructor(userModel: ModelDB<User, UserSecure>) {
+  private userModel: ModelDB<User>;
+  private userService: UserService;
+  constructor(userModel: ModelDB<User>) {
     this.userModel = userModel;
+    this.userService = new UserService(this.userModel);
   }
 
   /**
@@ -24,12 +29,21 @@ export class UserController {
     email?: string;
     page?: number;
     limit?: number;
+    user: AuthContext;
   }) {
     try {
-      const usuarios = await this.userModel.getAll(params);
-      return usuarios;
+      const userIdAuth = String(params.user.userId);
+      if (userIdAuth !== params.user.userId) {
+        throw new Error("No tienes permiso para realizar esta acción");
+      }
+      const userExistente = this.userModel.getById({ id: userIdAuth });
+      if (!userExistente) {
+        throw new Error("Usuario no encontrado");
+      }
+      const usuarios = await this.userService.getAll(params);
+      return usuarios as UserSecure[];
     } catch (error) {
-      console.error("Error en getAll:", error);
+      printError(error);
       throw new Error("Error al obtener los usuarios");
     }
   }
@@ -43,15 +57,15 @@ export class UserController {
     }
 
     try {
-      const usuario = await this.userModel.getById({ id });
+      const usuario = await this.userService.getById({ id });
 
       if (!usuario) {
-        throw new Error("Usuario no encontrado");
+        throw new Error("Usuario no encontrado Controler");
       }
 
-      return usuario;
+      return usuario as UserSecure;
     } catch (error) {
-      console.error("Error en getById:", error);
+      printError(error);
       throw new Error("Error al obtener el usuario");
     }
   }
@@ -63,17 +77,13 @@ export class UserController {
     try {
       const validatedData = UserCreateSchema.parse(data);
 
-      const nuevoUsuario = await this.userModel.add({
-        input: validatedData,
+      const nuevoUsuario = await this.userService.create({
+        data: validatedData,
       });
 
-      return {
-        success: true,
-        data: nuevoUsuario,
-        message: "Usuario creado exitosamente",
-      };
+      return nuevoUsuario;
     } catch (error) {
-      console.error("Error en create:", error);
+      printError(error);
       throw new Error("Error al crear el usuario");
     }
   }
@@ -107,24 +117,22 @@ export class UserController {
       };
 
       const updatedUser: User = {
-        id: usuarioExistente.id,
+        id: id,
         name: data.name ? String(data.name) : usuarioExistente.name,
         email: data.email ? String(data.email) : usuarioExistente.email,
-        password: data.password ? String(data.password) : "unchanged", // Mantener contraseña existente
+        password: data.password
+          ? String(data.password)
+          : usuarioExistente.password, // Mantener contraseña existente
         tel: data.tel ? String(data.tel) : usuarioExistente.tel,
         role: data.role ? validateRole(String(data.role)) : "cliente", // Valor por defecto
       };
 
-      const usuarioActualizado = await this.userModel.update({
+      const usuarioActualizado = await this.userService.update({
         id,
-        input: updatedUser,
+        data: updatedUser,
       });
 
-      return {
-        success: true,
-        data: usuarioActualizado,
-        message: "Usuario actualizado exitosamente",
-      };
+      return usuarioActualizado;
     } catch (error) {
       console.error("Error en update:", error);
       throw new Error("Error al actualizar el usuario");
@@ -145,7 +153,7 @@ export class UserController {
         throw new Error("Usuario no encontrado");
       }
 
-      const eliminado = await this.userModel.delete({ id });
+      const eliminado = await this.userService.delete({ id });
 
       return {
         success: true,
@@ -156,5 +164,12 @@ export class UserController {
       console.error("Error en delete:", error);
       throw new Error("Error al eliminar el usuario");
     }
+  }
+}
+
+function printError(error: unknown): void {
+  const dev = Deno.env.get("ENV");
+  if (dev) {
+    console.error("Error:", error);
   }
 }

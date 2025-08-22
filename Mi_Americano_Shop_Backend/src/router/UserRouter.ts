@@ -1,9 +1,9 @@
 import { Router } from "oak";
 import { UserController } from "../Controller/controllerUser.ts";
 import type { ModelDB } from "../interface/model.ts";
-import { User, UserSecure } from "../schemas/user.ts";
+import { User } from "../schemas/user.ts";
 
-export function routerUser(userInstance: ModelDB<User, UserSecure>) {
+export function routerUser(userInstance: ModelDB<User>) {
   const routerUser = new Router();
   const user = new UserController(userInstance);
   routerUser

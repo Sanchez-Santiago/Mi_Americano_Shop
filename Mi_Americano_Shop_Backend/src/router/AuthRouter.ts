@@ -2,6 +2,7 @@
 import { Router } from "oak";
 import { AuthController } from "../Controller/AuthController.ts";
 import { UserModelDB } from "../interface/UserModel.ts";
+import { UserLogin } from "../schemas/user.ts";
 
 export function authRouter(userModel: UserModelDB) {
   const router = new Router();
@@ -12,13 +13,24 @@ export function authRouter(userModel: UserModelDB) {
     try {
       const body = ctx.request.body.json();
       const input = await body;
-      const result = await authController.login(input);
+      const email = input.user.email;
+      const password = input.user.password;
+      const user: UserLogin = {
+        email,
+        password,
+      };
+      if (!email || !password) throw new Error("Email y contraseña requeridos");
+
+      const result = await authController.login({ user });
 
       ctx.response.status = 200;
       ctx.response.body = { success: true, data: result };
     } catch (error) {
       ctx.response.status = 401;
-      ctx.response.body = { success: false, message: error };
+      ctx.response.body = {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
@@ -33,7 +45,10 @@ export function authRouter(userModel: UserModelDB) {
       ctx.response.body = { success: true, token };
     } catch (error) {
       ctx.response.status = 400;
-      ctx.response.body = { success: false, message: error };
+      ctx.response.body = {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
@@ -51,7 +66,10 @@ export function authRouter(userModel: UserModelDB) {
       ctx.response.body = { success: true, payload };
     } catch (error) {
       ctx.response.status = 401;
-      ctx.response.body = { success: false, message: error };
+      ctx.response.body = {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
@@ -66,7 +84,10 @@ export function authRouter(userModel: UserModelDB) {
       ctx.response.body = { success: true, token: newToken };
     } catch (error) {
       ctx.response.status = 401;
-      ctx.response.body = { success: false, message: error };
+      ctx.response.body = {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 

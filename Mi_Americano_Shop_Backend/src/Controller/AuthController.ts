@@ -1,7 +1,7 @@
 // Controller/controllerAuth.ts
-import { User, UserLogin } from "../schemas/user.ts";
+import { UserCreate, UserCreateSchema, UserLogin } from "../schemas/user.ts";
 import { UserModelDB } from "../interface/UserModel.ts";
-import { AuthService } from "../services/Authservice.ts";
+import { AuthService } from "../services/AuthService.ts";
 
 export class AuthController {
   private authService: AuthService;
@@ -11,11 +11,34 @@ export class AuthController {
   }
 
   async login(input: { user: UserLogin }) {
-    return await this.authService.login(input);
+    try {
+      if (!input.user) {
+        throw new Error("Usuario no encontrado");
+      }
+      if (!input.user.email || !input.user.password) {
+        throw new Error("Email o contraseña incorrectos");
+      }
+      const nuevoUsuario = await this.authService.login(input);
+      if (!nuevoUsuario) {
+        throw new Error("Usuario no encontrado");
+      }
+      return nuevoUsuario;
+    } catch (error) {
+      printError(error);
+      throw new Error("Error al logearse el usuario");
+    }
   }
 
-  async register(userData: User) {
-    return await this.authService.register(userData);
+  async register(userData: UserCreate) {
+    try {
+      const validatedData = UserCreateSchema.parse(userData);
+
+      const nuevoUsuario = await this.authService.register(validatedData);
+      return nuevoUsuario;
+    } catch (error) {
+      printError(error);
+      throw new Error("Error al crear el usuario");
+    }
   }
 
   async verifyToken(token: string) {
@@ -24,5 +47,12 @@ export class AuthController {
 
   async refreshToken(oldToken: string) {
     return await this.authService.refreshToken(oldToken);
+  }
+}
+
+function printError(error: unknown): void {
+  const dev = Deno.env.get("ENV");
+  if (dev) {
+    console.error("Error:", error);
   }
 }

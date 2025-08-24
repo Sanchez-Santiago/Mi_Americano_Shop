@@ -15,15 +15,15 @@ export class UserSQLite implements UserModelDB {
   async add({ input }: { input: User }): Promise<User> {
     try {
       const result = await sqlite.execute({
-        sql: `INSERT INTO user (id,name, email, password, tel, role)
-              VALUES (?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO user (id, name, email, password, tel, role)
+              VALUES (?, ?, ?, ?, ?, ?)`,
         args: [
           input.id,
           input.name,
           input.email,
           input.password,
           input.tel,
-          input.role,
+          input.role || "cliente",
         ],
       });
 
@@ -122,8 +122,10 @@ export class UserSQLite implements UserModelDB {
   async getByEmail({ email }: { email: string }): Promise<User | undefined> {
     try {
       const { rows } = await sqlite.execute({
-        sql: `SELECT id, name, email, tel FROM user WHERE email = ?`,
-        args: [email],
+        sql: `SELECT id, name, email, password, tel, role
+          FROM user
+          WHERE LOWER(email) = LOWER(?)`,
+        args: [email.toLowerCase()],
       });
 
       if (rows?.length) {
@@ -187,7 +189,7 @@ export class UserSQLite implements UserModelDB {
 
       // Agregamos paginación al final
       const query = `
-        SELECT id, name, email, tel
+        SELECT id, name, email, tel, role
         FROM user
         ${whereClause}
         LIMIT ? OFFSET ?

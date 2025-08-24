@@ -1,17 +1,24 @@
 import { Middleware } from "oak";
 import { verify } from "djwt";
 import { config } from "dotenv";
-import type { ModelDB } from "../interface/model.ts";
-import { User } from "../schemas/user.ts";
-import { UserController } from "../Controller/controllerUser.ts";
+import type { UserModelDB } from "../interface/UserModel.ts";
+import { AuthController } from "../Controller/AuthController.ts";
 
 config({ export: true });
 
-export const authMiddleware = (model: ModelDB<User>): Middleware => {
+/**
+ * Middleware de autenticación JWT.
+ * - Verifica que el token exista en cookies.
+ * - Valida la firma y expiración del token.
+ * - Pasa el token plano al AuthController para que el servicio
+ *   se encargue de comprobar que corresponde a un usuario válido.
+ */
+export const authMiddleware = (model: UserModelDB): Middleware => {
   return async (ctx, next) => {
-    const userController = new UserController(model);
+    const authController = new AuthController(model);
 
     try {
+      // 1. Buscar token en cookies
       const token = await ctx.cookies.get("token");
       if (!token) {
         ctx.response.status = 401;
@@ -19,6 +26,7 @@ export const authMiddleware = (model: ModelDB<User>): Middleware => {
         return;
       }
 
+      // 2. Cargar clave secreta desde variables de entorno
       const secret = Deno.env.get("JWT_SECRET");
       if (!secret) throw new Error("JWT_SECRET no definido");
 
@@ -30,23 +38,21 @@ export const authMiddleware = (model: ModelDB<User>): Middleware => {
         ["verify"],
       );
 
-      const payload = await verify(token, key);
-      if (!payload.iss || typeof payload.iss !== "string") {
-        ctx.response.status = 401;
-        ctx.response.body = {
-          message: "Token sin identificador de usuario válido",
-        };
-        return;
-      }
+      // 3. Validar firma y expiración
+      await verify(token, key);
 
-      const user = await userController.getByIdAuth(payload.iss);
+      // 4. Pasar token al AuthController -> service lo valida contra la BD
+      const user = await authController.verifyToken(token);
       if (!user) {
         ctx.response.status = 401;
-        ctx.response.body = { message: "Usuario no válido o eliminado" };
+        ctx.response.body = { message: "Usuario no válido" };
         return;
       }
 
-      ctx.state.user = user; // guarda usuario completo, no solo payload
+      // 5. Guardar usuario en el contexto para siguientes middlewares/rutas
+      ctx.state.user = user;
+
+      // 6. Continuar con la request
       await next();
     } catch (error) {
       ctx.response.status = 401;

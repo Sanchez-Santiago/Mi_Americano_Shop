@@ -1,13 +1,15 @@
 import { Router } from "oak";
 import { ControllerPedido } from "../Controller/pedidoController.ts";
 import type { ModelDB } from "../interface/model.ts";
+import type { UserModelDB } from "../interface/UserModel.ts";
 import { Pedido } from "../schemas/pedido.ts";
-import { User } from "../schemas/user.ts";
 import { Producto } from "../schemas/producto.ts";
+import { authMiddleware } from "../middleware/authMiddleware.ts";
+import { AuthContext } from "../types/AuthContext.ts";
 
 export function routerPedido(
   pedidoModel: ModelDB<Pedido, Pedido>,
-  userModel: ModelDB<User>,
+  userModel: UserModelDB,
   productoModel: ModelDB<Producto, Producto>,
 ) {
   const router = new Router();
@@ -17,18 +19,18 @@ export function routerPedido(
     productoModel,
   );
 
-  // --- Listar todos los pedidos ---
-  router.get("/pedidos", async (ctx) => {
+  // --- Listar todos los pedidos (protegido) ---
+  router.get("/pedidos", authMiddleware(userModel), async (ctx) => {
     try {
+      const loggedUser = ctx.state.user;
+      const context: AuthContext = {
+        userId: loggedUser.id,
+        role: loggedUser.role,
+      };
+
       const url = ctx.request.url;
       const page = Number(url.searchParams.get("page")) || 1;
       const limit = Number(url.searchParams.get("limit")) || 20;
-
-      // Simular contexto de autenticación
-      const context = {
-        userId: ctx.request.headers.get("x-user-id") || "",
-        role: ctx.request.headers.get("x-user-role") || "vendedor",
-      };
 
       const pedidos = await controller.getAllPedidos({ context, page, limit });
 
@@ -50,15 +52,16 @@ export function routerPedido(
     }
   });
 
-  // --- Obtener pedido por ID ---
-  router.get("/pedidos/:id", async (ctx) => {
+  // --- Obtener pedido por ID (protegido) ---
+  router.get("/pedidos/:id", authMiddleware(userModel), async (ctx) => {
     try {
-      const id = String(ctx.params.id);
-      const context = {
-        userId: ctx.request.headers.get("x-user-id") || "",
-        role: ctx.request.headers.get("x-user-role") || "vendedor",
+      const loggedUser = ctx.state.user;
+      const context: AuthContext = {
+        userId: loggedUser.id,
+        role: loggedUser.role,
       };
 
+      const id = String(ctx.params.id);
       const pedido = await controller.getPedidoById({ id, context });
 
       if (!pedido) {
@@ -81,16 +84,17 @@ export function routerPedido(
     }
   });
 
-  // --- Crear un pedido ---
-  router.post("/pedidos", async (ctx) => {
+  // --- Crear un pedido (protegido) ---
+  router.post("/pedidos", authMiddleware(userModel), async (ctx) => {
     try {
+      const loggedUser = ctx.state.user;
+      const context: AuthContext = {
+        userId: loggedUser.id,
+        role: loggedUser.role,
+      };
+
       const body = ctx.request.body.json();
       const pedidoData = await body;
-
-      const context = {
-        userId: ctx.request.headers.get("x-user-id") || "",
-        role: ctx.request.headers.get("x-user-role") || "vendedor",
-      };
 
       const pedido = await controller.createPedido({
         pedido: pedidoData,
@@ -113,17 +117,18 @@ export function routerPedido(
     }
   });
 
-  // --- Actualizar un pedido ---
-  router.put("/pedidos/:id", async (ctx) => {
+  // --- Actualizar un pedido (protegido) ---
+  router.put("/pedidos/:id", authMiddleware(userModel), async (ctx) => {
     try {
+      const loggedUser = ctx.state.user;
+      const context: AuthContext = {
+        userId: loggedUser.id,
+        role: loggedUser.role,
+      };
+
       const id = String(ctx.params.id);
       const body = ctx.request.body.json();
       const pedidoData = await body;
-
-      const context = {
-        userId: ctx.request.headers.get("x-user-id") || "",
-        role: ctx.request.headers.get("x-user-role") || "vendedor",
-      };
 
       const pedidoActualizado = await controller.updatePedido({
         id,
@@ -158,15 +163,16 @@ export function routerPedido(
     }
   });
 
-  // --- Eliminar un pedido ---
-  router.delete("/pedidos/:id", async (ctx) => {
+  // --- Eliminar un pedido (protegido) ---
+  router.delete("/pedidos/:id", authMiddleware(userModel), async (ctx) => {
     try {
-      const id = String(ctx.params.id);
-      const context = {
-        userId: ctx.request.headers.get("x-user-id") || "",
-        role: ctx.request.headers.get("x-user-role") || "vendedor",
+      const loggedUser = ctx.state.user;
+      const context: AuthContext = {
+        userId: loggedUser.id,
+        role: loggedUser.role,
       };
 
+      const id = String(ctx.params.id);
       const eliminado = await controller.deletePedido({ id, context });
 
       if (!eliminado) {

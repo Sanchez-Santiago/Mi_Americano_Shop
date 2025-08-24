@@ -1,4 +1,4 @@
-import { User, UserLogin } from "../schemas/user.ts";
+import { User, UserCreate, UserLogin } from "../schemas/user.ts";
 import { UserModelDB } from "../interface/UserModel.ts";
 import { create, getNumericDate, verify } from "djwt";
 import { compare, hash } from "bcrypt";
@@ -30,8 +30,10 @@ export class AuthService {
 
   async login(input: { user: UserLogin }) {
     try {
-      const email = String(input.user.email);
-      const userOriginal = await this.modeUser.getByEmail({ email });
+      const email = input.user.email;
+      const userOriginal = await this.modeUser.getByEmail({
+        email: email.toLowerCase(),
+      });
 
       if (!userOriginal) {
         throw new Error("Correo no encontrado");
@@ -84,7 +86,7 @@ export class AuthService {
   }
 
   // Método adicional para registro de usuarios
-  async register(userData: User) {
+  async register(userData: UserCreate) {
     try {
       // Verificar si el usuario ya existe
       const existingUser = await this.modeUser.getByEmail({
@@ -95,13 +97,18 @@ export class AuthService {
       }
 
       // ✅ Hashear la contraseña antes de guardarla
-      const hashedPassword = await hash(userData.password, "12");
+      if (!userData.password || userData.password.length < 6) {
+        throw new Error("Password inválido");
+      }
+
+      const hashedPassword = await hash(userData.password);
       const id = uuid();
       // Crear usuario con contraseña hasheada
       const newUser: User = {
         ...userData,
         id: id,
         password: hashedPassword,
+        role: "cliente",
       };
 
       const createdUser = await this.modeUser.add({ input: newUser });
